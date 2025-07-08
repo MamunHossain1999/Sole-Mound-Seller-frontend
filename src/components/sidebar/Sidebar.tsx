@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo/Logo.png";
 
-// Sidebar icons (default)
+// Sidebar icons
 import dashboard from "@/assets/sideberIcon/dashboard.svg";
 import order from "@/assets/sideberIcon/order.svg";
 import product from "@/assets/sideberIcon/product.svg";
@@ -27,19 +27,11 @@ import customerWhite from "@/assets/sidebarIconWhite/customar.svg";
 import categoryWhite from "@/assets/sidebarIconWhite/category.svg";
 import earningsWhite from "@/assets/sidebarIconWhite/earing.svg";
 import transactionWhite from "@/assets/sidebarIconWhite/transactions.svg";
-import storeWhite from "@/assets/sidebarIconWhite/store.svg"; 
+import storeWhite from "@/assets/sidebarIconWhite/store.svg";
 import profileWhite from "@/assets/sidebarIconWhite/Profile.svg";
 import conversationWhite from "@/assets/sidebarIconWhite/conversion.svg";
 import reviewWhite from "@/assets/sidebarIconWhite/category.svg";
 import supportWhite from "@/assets/sidebarIconWhite/Customer Support (2).svg";
-
-const getNavLinkClass = (isActive: boolean) => {
-  const baseClass =
-    "group flex gap-3 items-center px-3 py-2 mt-3 rounded-[12px] text-base font-medium transition-all duration-200";
-  return isActive
-    ? `${baseClass} bg-[#C8A8E9] text-white`
-    : `${baseClass} text-[#505050] hover:bg-gray-100`;
-};
 
 const menuItems = [
   { label: "Dashboard", icon: dashboard, activeIcon: dashboardWhite, path: "/" },
@@ -56,6 +48,14 @@ const menuItems = [
   { label: "Support", icon: support, activeIcon: supportWhite, path: "/support" },
 ];
 
+const getNavLinkClass = (isActive: boolean) => {
+  const base =
+    "group flex gap-3 items-center px-3 py-2 mt-3 rounded-[12px] text-base font-medium transition-all duration-200";
+  return isActive
+    ? `${base} bg-[#C8A8E9] text-white`
+    : `${base} text-[#505050] hover:bg-gray-100`;
+};
+
 const Sidebar = ({
   isOpen = false,
   setIsOpen = () => {},
@@ -69,19 +69,25 @@ const Sidebar = ({
     <>
       {/* Mobile overlay */}
       <div
-        className={`fixed inset-0 !bg-purple-200 bg-opacity-40 z-30 lg:hidden transition-opacity ${
+        className={`fixed inset-0 bg-purple-200 bg-opacity-40 z-30 lg:hidden transition-opacity ${
           isOpen ? "opacity-100 visible" : "opacity-0 invisible"
         }`}
+        onClick={() => setIsOpen(false)}
       />
 
+      {/* Sidebar */}
       <div
-        className={`w-[257px] top-0 left-0 min-h-screen bg-[#FFFFFF] shadow-lg z-40 transition-all duration-300
-        ${isCollapsed ? "w-16" : "w-64"}
-        ${isOpen ? "translate-x-0" : "-translate-x-full"}
-        lg:translate-x-0`}
+        className={`
+          fixed top-0 left-0 h-auto bg-white shadow-lg z-40 transition-all duration-300 overflow-auto
+          ${isCollapsed ? "w-16" : "w-64"}
+          ${isOpen ? "translate-x-0" : "-translate-x-full"}
+          md:translate-x-0 md:static md:block
+          md:${isCollapsed ? "w-16" : "w-52"} 
+          lg:${isCollapsed ? "w-16" : "w-64"}
+        `}
       >
         {/* Logo & toggle */}
-        <div className="p-4 flex items-center justify-between">
+        <div className="p-4 flex items-center justify-between ">
           <div className="flex items-center gap-2 w-[202px] mx-auto">
             <img src={logo} className="w-[68px] h-[68px]" alt="Logo" />
             {!isCollapsed && (
@@ -89,36 +95,26 @@ const Sidebar = ({
             )}
           </div>
 
-          {/* Collapse or Close Button */}
-          <div className="md:hidden flex items-center gap-2">
+          {/* Collapse button  ata dorkar nai*/}
+          <div className=" items-center gap-2 hidden">
             <Button
               size="icon"
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="!bg-purple-300 !hover:bg-purple-400 text-white p-2 rounded-full"
+              className="bg-[#FDF1F7] hover:bg-purple-400 text-white p-2 rounded-full"
             >
               {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
             </Button>
-            <Button
-              size="icon"
-              className="lg:hidden text-gray-600"
-              onClick={() => setIsOpen(false)}
-            >
-              <X className="w-5 h-5" />
-            </Button>
+            
           </div>
         </div>
 
-        {/* Nav Items */}
+        {/* Nav items */}
         <nav className="mt-4 w-[202px] mx-auto">
-          {menuItems.map((item) => (
+          {menuItems?.map((item) => (
             <NavLink key={item.path} to={item.path} onClick={() => setIsOpen(false)}>
-              {({ isActive }: { isActive: boolean }) => (
+              {({ isActive }) => (
                 <div className={`${getNavLinkClass(isActive)} ${isCollapsed ? "justify-center" : ""}`}>
-                  <img
-                    src={isActive ? item.activeIcon : item.icon}
-                    className="w-6 h-6"
-                    alt={`${item.label} icon`}
-                  />
+                  <img src={isActive ? item.activeIcon : item.icon} className="w-6 h-6" alt={item.label} />
                   {!isCollapsed && <span>{item.label}</span>}
                 </div>
               )}
@@ -127,18 +123,14 @@ const Sidebar = ({
         </nav>
 
         {/* Logout */}
-        <div className="absolute bottom-4 px-8 w-full">
+        <div className="absolute bottom-4 px-4 w-full">
           <div
-            className={`flex items-center gap-2 text-sm font-normal text-[#A8537B] px-3 py-2 rounded-md cursor-pointer ${
+            className={`flex items-center gap-2 text-sm font-normal ml-4 text-[#A8537B] px-3 py-2 rounded-md cursor-pointer ${
               isCollapsed ? "justify-center" : ""
             }`}
           >
-            <img
-              src={logout}
-              className="w-6 h-6"
-              alt="Logout icon"
-            />
-            {!isCollapsed && <span className="text-sm font-normal text-[#A8537B]">Logout</span>}
+            <img src={logout} className="w-6 h-6" alt="Logout" />
+            {!isCollapsed && <span className="font-normal text-sm font-inter">Logout</span>}
           </div>
         </div>
       </div>
