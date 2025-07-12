@@ -67,10 +67,10 @@ const Sidebar = ({
 
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Overlay */}
       <div
         className={`fixed inset-0 bg-purple-200 bg-opacity-40 z-30 lg:hidden transition-opacity ${
-          isOpen ? "opacity-100 visible" : "opacity-0 invisible"
+          isOpen ? "opacity-100 visible pointer-events-auto" : "opacity-0 invisible pointer-events-none"
         }`}
         onClick={() => setIsOpen(false)}
       />
@@ -78,16 +78,16 @@ const Sidebar = ({
       {/* Sidebar */}
       <div
         className={`
-          fixed top-0 left-0 h-auto bg-white shadow-lg z-40 transition-all duration-300 overflow-auto
+          fixed top-0 left-0 h-full bg-white shadow-lg z-40 transition-all duration-300 overflow-y-auto
           ${isCollapsed ? "w-16" : "w-64"}
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
-          md:translate-x-0 md:static md:block
-          md:${isCollapsed ? "w-16" : "w-52"} 
+          md:translate-x-0 md:static md:block md:${isCollapsed ? "w-16" : "w-52"}
           lg:${isCollapsed ? "w-16" : "w-64"}
         `}
+        style={{ WebkitOverflowScrolling: "touch" }}
       >
         {/* Logo & toggle */}
-        <div className="p-4 flex items-center justify-between ">
+        <div className="p-4 flex items-center justify-between">
           <div className="flex items-center gap-2 w-[202px] mx-auto">
             <img src={logo} className="w-[68px] h-[68px]" alt="Logo" />
             {!isCollapsed && (
@@ -95,26 +95,37 @@ const Sidebar = ({
             )}
           </div>
 
-          {/* Collapse button  ata dorkar nai*/}
-          <div className=" items-center gap-2 hidden">
+          {/* Collapse button (hidden as per your code) */}
+          <div className="items-center gap-2 hidden">
             <Button
               size="icon"
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="bg-[#FDF1F7] hover:bg-purple-400 text-white p-2 rounded-full"
             >
-              {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+              {isCollapsed ? (
+                <ChevronRight className="w-4 h-4" />
+              ) : (
+                <ChevronLeft className="w-4 h-4" />
+              )}
             </Button>
-            
           </div>
         </div>
 
-        {/* Nav items */}
+        {/* Navigation items */}
         <nav className="mt-4 w-[202px] mx-auto">
-          {menuItems?.map((item) => (
+          {menuItems.map((item) => (
             <NavLink key={item.path} to={item.path} onClick={() => setIsOpen(false)}>
               {({ isActive }) => (
-                <div className={`${getNavLinkClass(isActive)} ${isCollapsed ? "justify-center" : ""}`}>
-                  <img src={isActive ? item.activeIcon : item.icon} className="w-6 h-6" alt={item.label} />
+                <div
+                  className={`${getNavLinkClass(isActive)} ${
+                    isCollapsed ? "justify-center" : ""
+                  }`}
+                >
+                  <img
+                    src={isActive ? item.activeIcon : item.icon}
+                    className="w-6 h-6"
+                    alt={item.label}
+                  />
                   {!isCollapsed && <span>{item.label}</span>}
                 </div>
               )}
@@ -123,14 +134,16 @@ const Sidebar = ({
         </nav>
 
         {/* Logout */}
-        <div className="absolute bottom-4 px-4 w-full">
+        <div className="bottom-4 px-4 w-full md:pt-28">
           <div
             className={`flex items-center gap-2 text-sm font-normal ml-4 text-[#A8537B] px-3 py-2 rounded-md cursor-pointer ${
               isCollapsed ? "justify-center" : ""
             }`}
           >
             <img src={logout} className="w-6 h-6" alt="Logout" />
-            {!isCollapsed && <span className="font-normal text-sm font-inter">Logout</span>}
+            {!isCollapsed && (
+              <span className="font-normal text-sm font-inter">Logout</span>
+            )}
           </div>
         </div>
       </div>

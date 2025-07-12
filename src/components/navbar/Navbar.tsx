@@ -1,7 +1,15 @@
 import { useState } from "react";
 import mail from "@/assets/navbarIcon/mail.svg";
-import notification from "@/assets/navbarIcon/notifications.png";
-import { Search, Menu, Mail, ShoppingCart, DollarSign, Bell, User } from "lucide-react";
+
+import {
+  Search,
+  Menu,
+  Mail,
+  ShoppingCart,
+  DollarSign,
+  Bell,
+  User,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -79,8 +87,8 @@ const Navbar = ({ onMenuClick }: NavbarProps) => {
   };
 
   return (
-    <header className="w-full border-gray-200 mx-auto sticky top-0 z-50 ">
-      <div className="bg-white mx-4 rounded-lg px-2 sm:px-6 lg:px-8 shadow-lg ">
+    <header className="w-full mx-auto sticky top-0 z-50 ">
+      <div className="bg-white mx-4 rounded-lg px-2 sm:px-6 lg:px-8 ">
         <div className="flex items-center justify-between h-24 gap-2 ">
           {/* Left: Mobile Menu + Logo */}
           <div className="flex items-center ">
@@ -118,16 +126,15 @@ const Navbar = ({ onMenuClick }: NavbarProps) => {
           <div className=" hidden lg:block">
             <div className="flex items-center gap-2">
               {/* Messages */}
-              {/* Messages */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    className="w-9 h-9 relative rounded-[12px] !bg-[#F1DAFC] border border-[#B6B7BC] flex items-center justify-center"
+                    className="w-9 h-9 relative rounded-[12px] !bg-[#F1DAFC] flex items-center justify-center"
                     aria-label="Messages"
                   >
-                     <Mail className="w-6 h-6 object-cover text-[#505050]" />
+                    <Mail className="w-6 h-6 object-cover text-[#505050]" />
                     {messages.length > 0 && (
-                      <div className="absolute -top-2 -right-1 bg-[#FF1C1C] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
+                      <div className="absolute -top-2 -right-1 bg-[#FF1C1C] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center !border-white">
                         {messages.length}
                       </div>
                     )}
@@ -136,55 +143,56 @@ const Navbar = ({ onMenuClick }: NavbarProps) => {
               </DropdownMenu>
 
               {/* Notifications */}
-                <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          className="relative rounded-[12px] !bg-[#F1DAFC] border border-[#B6B7BC] flex items-center justify-center w-9 h-9"
-          aria-label="Notifications"
-        >
-          {/* <img
-            src={notification}
-            alt="Notification"
-            className="w-6 h-6 object-contain"
-          /> */}
-        <FaRegBell className="w-6 h-6 object-cover text-[#505050]" />
-          {notifications.length > 0 && (
-            <div className="absolute -top-2 -right-1 bg-[#FF1C1C] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
-              {notifications.length}
-            </div>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    className="relative rounded-[12px] !bg-[#F1DAFC] border border-[#B6B7BC] flex items-center justify-center w-9 h-9"
+                    aria-label="Notifications"
+                  >
+                    <FaRegBell className="w-6 h-6 object-cover text-[#505050]" />
+                    {notifications.length > 0 && (
+                      <div className="absolute -top-2 -right-1 bg-[#FF1C1C] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
+                        {notifications.length}
+                      </div>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="w-72 mt-2">
-        <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {notifications.length > 0 ? (
-          notifications.map((item) => (
-            <DropdownMenuItem key={item.id} className="flex items-center gap-3">
-              {getNotificationIcon(item.type)}
-              <span className="text-sm text-gray-700">{item.message}</span>
-            </DropdownMenuItem>
-          ))
-        ) : (
-          <DropdownMenuItem className="text-gray-400 text-sm">
-            No notifications
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+                <DropdownMenuContent className="w-72 mt-2">
+                  <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {notifications.length > 0 ? (
+                    notifications.map((item) => (
+                      <DropdownMenuItem
+                        key={item.id}
+                        className="flex items-center gap-3"
+                      >
+                        {getNotificationIcon(item.type)}
+                        <span className="text-sm text-gray-700">
+                          {item.message}
+                        </span>
+                      </DropdownMenuItem>
+                    ))
+                  ) : (
+                    <DropdownMenuItem className="text-gray-400 text-sm">
+                      No notifications
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Profile */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button className="flex items-center !py-3 !bg-white  p-2">
+                  <Button className="flex items-center !py-3 !bg-white p-2 border-none hover:border-none shadow-none hover:shadow-none">
                     <Avatar className="w-8 h-8">
                       <AvatarImage src="/api/placeholder/32/32" />
-                      <AvatarFallback className="bg-purple-600 text-white text-sm">
+                      {/* img set hobe vendor er logo */}
+                      <AvatarFallback className="bg-purple-300 text-white text-sm">
                         GH
                       </AvatarFallback>
                     </Avatar>
-                    <div className="hidden sm:block text-left">
+                    <div className="hidden sm:block text-left ml-2">
                       <p className="text-base font-semibold text-[#505050]">
                         Guy Hawkins
                       </p>
@@ -226,7 +234,7 @@ const Navbar = ({ onMenuClick }: NavbarProps) => {
 
               {/* Notifications */}
               <DropdownMenuItem className="flex items-center gap-2">
-                <img src={notification} alt="Notification" />
+                <FaRegBell className="w-6 h-6 object-cover text-[#505050]" />
                 Notifications
                 <Badge className="ml-auto bg-[#FF1C1C] text-[#F1DAFC] text-xs px-2 rounded-full">
                   {notifications.length}
