@@ -130,7 +130,7 @@ const TopSellingAndBrands = () => {
                 <th className="text-left px-4 py-3 text-[#A8537B] font-bold text-base lg:text-[20px]">
                   Brands
                 </th>
-                <th className="text-left px-4 py-3 text-[#8B909A] font-bold text-base lg:text-[20px]">
+                <th className="text-left pl-4 py-3 text-[#8B909A] font-bold text-base lg:text-[20px]">
                   Order
                 </th>
               </tr>

@@ -44,11 +44,11 @@ const MapCard = () => {
   return (
     <div className="bg-white rounded-xl shadow-lg w-full h-full">
       <h2 className="text-base lg:text-[20px] font-bold text-[#1F1F1F] mb-4">
-        Your Current Location
+        Revenue by Region
       </h2>
       <div className="h-[300px] sm:h-[400px] w-full rounded-md overflow-hidden">
         <MapContainer
-          center={location || [23.8103, 90.4125]} // fallback: Dhaka
+          center={location || [23.8103, 90.4125]}
           zoom={13}
           scrollWheelZoom={false}
           className="h-full w-full"

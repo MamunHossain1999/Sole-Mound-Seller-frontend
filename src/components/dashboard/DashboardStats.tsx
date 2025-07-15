@@ -11,53 +11,10 @@ import cancel from "@/assets/dashboardIcon/cancel.svg";
 import walletIcon from "@/assets/dashboardIcon/walletIcon.svg";
 import TopSellingProducts from "./TopSellingProducts";
 import LatestOrder from "./LatestOrder";
+import DashBoardCard from "./DashBoardCard";
 
 const DashboardStats = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("This Month");
-
-  // Stats Cards Data
-  const statsCards = [
-    // {
-    //   title: "Total Sales",
-    //   value: "34,945",
-    //   icon: <ShoppingCart className="w-5 h-5 text-white" />,
-    //   bgColor: "bg-gradient-to-r from-[#FFFFFF] via-[#F8F8FF] to-[#F8F8FF]",
-    //   change: "+12.5%",
-    //   changeType: "increase",
-    // },
-    // {
-    //   title: "Total Income",
-    //   value: "$23,802",
-    //   icon: <TrendingUp className="w-5 h-5 text-white" />,
-    //   bgColor: "bg-gradient-to-r from-green-500 to-green-600",
-    //   change: "+8.2%",
-    //   changeType: "increase",
-    // },
-    // {
-    //   title: "Monthly Earning",
-    //   value: "$13,123",
-    //   icon: <TrendingUp className="w-5 h-5 text-white" />,
-    //   bgColor: "bg-gradient-to-r from-blue-500 to-blue-600",
-    //   change: "+15.3%",
-    //   changeType: "increase",
-    // },
-    // {
-    //   title: "Total Withdraw",
-    //   value: "$2,543",
-    //   icon: <TrendingDown className="w-5 h-5 text-white" />,
-    //   bgColor: "bg-gradient-to-r from-orange-500 to-orange-600",
-    //   change: "-2.1%",
-    //   changeType: "decrease",
-    // },
-    // {
-    //   title: "Total Visitors",
-    //   value: "34,945",
-    //   icon: <Users className="w-5 h-5 text-white" />,
-    //   bgColor: "bg-gradient-to-r from-pink-500 to-pink-600",
-    //   change: "+25.7%",
-    //   changeType: "increase",
-    // },
-  ];
 
   // Order Statistics Data
   const orderStats = [
@@ -111,43 +68,16 @@ const DashboardStats = () => {
 
   // Revenue by Region Data
   const revenueByRegion = [
-    { region: "England", percentage: 40, color: "bg-blue-500" },
-    { region: "Northern Ireland", percentage: 25, color: "bg-green-500" },
-    { region: "Scotland", percentage: 20, color: "bg-purple-500" },
-    { region: "Wales", percentage: 15, color: "bg-orange-500" },
+    { region: "England", percentage: 40 },
+    { region: "Northern Ireland", percentage: 25 },
+    { region: "Scotland", percentage: 20 },
+    { region: "Wales", percentage: 15 },
   ];
 
   return (
     <div className="w-full mx-auto ">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {statsCards?.map((card, index) => (
-          <Card
-            key={index}
-            className={`${card.bgColor} border-0 shadow-lg hover:shadow-xl transition-shadow duration-300`}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="text-white">
-                  <p className="text-sm opacity-90 mb-1">{card.title}</p>
-                  <p className="text-2xl font-bold">{card.value}</p>
-                  <div className="flex items-center mt-2">
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        card.changeType === "increase"
-                          ? "bg-white bg-opacity-20 text-white"
-                          : "bg-white bg-opacity-20 text-white"
-                      }`}
-                    >
-                      {card.change}
-                    </span>
-                  </div>
-                </div>
-                <div className="opacity-80">{card.icon}</div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="mb-4">
+        <DashBoardCard />
       </div>
 
       {/* Order Statistics and Vendor Wallet */}
@@ -286,9 +216,6 @@ const DashboardStats = () => {
               {revenueByRegion?.map((region, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div
-                      className={`w-3 h-3 rounded-full ${region.color}`}
-                    ></div>
                     <span className="text-sm font-medium text-[#23272E]">
                       {region.region}
                     </span>

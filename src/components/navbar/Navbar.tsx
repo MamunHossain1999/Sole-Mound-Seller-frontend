@@ -134,7 +134,7 @@ const Navbar = ({ onMenuClick }: NavbarProps) => {
                   >
                     <Mail className="w-6 h-6 object-cover text-[#505050]" />
                     {messages.length > 0 && (
-                      <div className="absolute -top-2 -right-1 bg-[#FF1C1C] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center !border-white">
+                      <div className="absolute -top-2 -right-1 bg-[#FF1C1C] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
                         {messages.length}
                       </div>
                     )}

@@ -70,13 +70,13 @@ const LatestOrder = () => {
                 <th className="text-left text-base font-bold text-[#8B909A] px-4 py-3 lg:text-[20px]">
                   Order ID
                 </th>
-                <th className="text-left text-base font-bold text-[#8B909A] px-4 py-3 lg:text-[20px]">
+                <th className="text-left text-base font-bold text-[#8B909A] px-6 py-3 lg:text-[20px]">
                   Date
                 </th>
-                <th className="text-left text-base font-bold text-[#8B909A] px-4 py-3 lg:text-[20px]">
+                <th className="text-left text-base font-bold text-[#8B909A] px-6 py-3 lg:text-[20px]">
                   Status
                 </th>
-                <th className="text-left text-base font-bold text-[#8B909A] px-4 py-3 lg:text-[20px]">
+                <th className="text-left text-base font-bold text-[#8B909A] pl-6 py-3 lg:text-[20px]">
                   Amount
                 </th>
               </tr>
@@ -94,7 +94,7 @@ const LatestOrder = () => {
                   <td className="px-6 py-3 text-base font-normal text-[#1F1F1F]">{order.date}</td>
                   <td className="px-6 py-3">
                     <span
-                      className={`inline-flex items-center gap-2 text-sm font-medium ${
+                      className={`inline-flex items-center gap-2 text-sm font-normal ${
                         order.status === "Delivered"
                           ? "text-[#1F1F1F]"
                           : "text-[#1F1F1F]"
