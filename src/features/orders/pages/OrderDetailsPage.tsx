@@ -210,7 +210,7 @@ const OrderDetailsPage: React.FC = () => {
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-base lg:text-2xl font-bold text-[#333843] mb-2">
-            Order Details
+            Orders
           </h1>
           <nav className="flex">
             <Link to="/" className="text-sm font-medium text-[#A8537B]">
@@ -233,7 +233,7 @@ const OrderDetailsPage: React.FC = () => {
               </svg>
             </span>
             <Link to="/orders" className="text-sm font-medium text-[#A8537B]">
-              Order List
+              Orders
             </Link>
             <span className="text-gray-500">
               <svg
@@ -252,7 +252,9 @@ const OrderDetailsPage: React.FC = () => {
               </svg>
             </span>
             <span className="text-sm font-medium text-[#919191]">
-              Order Details
+               <Link to="/orders-details" className="text-sm font-medium ">
+              Orders list
+            </Link>
             </span>
           </nav>
         </div>
@@ -429,7 +431,7 @@ const OrderDetailsPage: React.FC = () => {
                                 checked={selectedFilter === option}
                                 readOnly
                                 name="selectAll"
-                                className="peer w-full h-full accent-[#C8A8E9] bg-white border border-gray-300 rounded appearance-none checked:bg-[#C8A8E9] checked:border-transparent"
+                                className="peer w-full h-full accent-[#C8A8E9] bg-white border border-[#C8A8E9] rounded appearance-none checked:bg-[#C8A8E9] checked:border-transparent"
                               />
                               <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-white text-xs font-bold peer-checked:flex ">
                                 ✓
@@ -457,7 +459,7 @@ const OrderDetailsPage: React.FC = () => {
                       {/* button */}
                       <button
                         onClick={applyFilter}
-                        className="w-full bg-[#C8A8E9] text-[#1F1F1F] text-base font-semibold py-2 rounded-[8px] hover:bg-purple-300 transition-colors"
+                        className="w-full bg-[#C8A8E9] text-[#FFF] text-base font-semibold py-2 rounded-[8px] hover:bg-purple-300 transition-colors"
                       >
                         Filter
                       </button>
