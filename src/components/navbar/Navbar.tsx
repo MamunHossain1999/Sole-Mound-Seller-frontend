@@ -88,7 +88,7 @@ const Navbar = ({ onMenuClick }: NavbarProps) => {
 
   return (
     <header className="w-full mx-auto sticky top-0 z-50 ">
-      <div className="bg-white mx-4 rounded-lg px-2 sm:px-6 lg:px-8 ">
+      <div className="bg-white mx-6 rounded-lg px-2 sm:px-6 lg:px-8 ">
         <div className="flex items-center justify-between h-24 gap-2 ">
           {/* Left: Mobile Menu + Logo */}
           <div className="flex items-center ">
@@ -109,7 +109,7 @@ const Navbar = ({ onMenuClick }: NavbarProps) => {
             <div className="relative w-full max-w-md sm:max-w-xl">
               <Input
                 placeholder="Search products"
-                className={`pl-4 pr-10 !py-3 w-full border border-[#B6B7BC] text-[#949494] font-medium rounded-[12px] transition-all duration-200 text-sm sm:text-base ${
+                className={`pl-4 pr-10 md:py-5 w-full border border-[#B6B7BC] text-[#949494] font-medium rounded-[12px] transition-all duration-200 text-sm sm:text-base ${
                   isSearchFocused
                     ? "!border-purple-500 ring-1 ring-purple-400 "
                     : "hover:border-purple-400 focus:outline-none"
