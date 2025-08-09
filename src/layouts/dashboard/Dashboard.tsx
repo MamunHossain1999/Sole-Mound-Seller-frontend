@@ -12,7 +12,7 @@ const Dashboard = () => {
 
       <div className="flex flex-col flex-1 overflow-auto bg-[#FDF1F7]">
         <Navbar onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 p-4 min-h-screen bg-[#FDF1F7]">
+        <main className="flex-1 p-6 min-h-screen bg-[#FDF1F7]">
           <Outlet />
         </main>
       </div>
