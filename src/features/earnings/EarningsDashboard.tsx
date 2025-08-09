@@ -80,7 +80,7 @@ const EarningsDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen p-">
+    <div className="min-h-screen pb-12">
       <div className="mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8 ">
