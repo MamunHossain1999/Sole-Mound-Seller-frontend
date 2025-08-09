@@ -130,7 +130,7 @@ const OrderDashboard: React.FC = () => {
           {/* Left - Title and Breadcrumb */}
           <div>
             <p className="text-base lg:text-2xl font-bold text-[#333843]">
-              Order Details
+              Orders
             </p>
             <div className="flex items-center flex-wrap space-x-1 text-sm mt-1">
               <NavLink to="/" className="font-medium">
@@ -138,7 +138,6 @@ const OrderDashboard: React.FC = () => {
                   Dashboard
                 </span>
               </NavLink>
-
               <span className="text-gray-500">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -156,9 +155,31 @@ const OrderDashboard: React.FC = () => {
                 </svg>
               </span>
 
-              <NavLink to="/orders-details">
+              <NavLink to="/orders">
+                <span className="text-[#A8537B] text-sm font-medium">
+                  Orders
+                </span>
+              </NavLink>
+              <span className="text-gray-500">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-chevron-right"
+                >
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </span>
+
+              <NavLink to="/orders-list">
                 <span className="text-[#919191] text-sm font-medium">
-                  Order Details
+                  Order list
                 </span>
               </NavLink>
             </div>
@@ -314,7 +335,7 @@ const OrderDashboard: React.FC = () => {
 
         {/* Modal */}
         {showAddForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0  bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg max-w-md w-full p-6">
               <h3 className="text-lg font-semibold mb-4">Add New Order</h3>
               <div className="space-y-4">
