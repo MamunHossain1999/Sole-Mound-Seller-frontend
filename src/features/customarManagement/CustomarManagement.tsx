@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Plus, Search, ChevronDown } from "lucide-react";
+import { useNavigate } from "react-router";
 
 interface Customer {
   id: string;
@@ -24,6 +25,7 @@ interface StatsCard {
 const CustomarManagement: React.FC = () => {
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate();
 
   const statsCards: StatsCard[] = [
     {
@@ -675,7 +677,9 @@ const CustomarManagement: React.FC = () => {
                             />
                           </svg>
                         </button>
-                        <button className="p-1 cursor-pointer hover:text-purple-600 transition-colors">
+                        <button className="p-1 cursor-pointer hover:text-purple-600 transition-colors"
+                        onClick={() => navigate(`/customers-details-page`)}
+                        >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="24"
