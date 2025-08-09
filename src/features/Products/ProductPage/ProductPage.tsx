@@ -162,7 +162,7 @@ const ProductPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-pink-50 min-h-screen">
+    <div className=" mx-auto bg-pink-50 pb-12 min-h-screen">
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6">
           {/* Image Section */}
