@@ -1,90 +1,38 @@
 import React, { useState } from "react";
 import { Search } from "lucide-react";
-
-interface Transaction {
-  id: string;
-  paid: number;
-  method: "Mastercard" | "Visa" | "Paypal" | "Amex";
-  date: string;
-}
+import { useGetAllOrdersQuery } from "@/redux/api/orderApi";
+import { useNavigate } from "react-router";
 
 const TransactionDashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMethod, setSelectedMethod] = useState("");
   const [selectedTransaction, setSelectedTransaction] = useState<string | null>(
-    null
+    null,
   );
+  const navigate = useNavigate();
+  const {
+    data: transactions = [],
+    isLoading,
+    isError,
+  } = useGetAllOrdersQuery();
+  console.log(transactions);
 
-  const transactions: Transaction[] = [
-    {
-      id: "#456667",
-      paid: 294.0,
-      method: "Mastercard",
-      date: "16.12.2020, 14:21",
-    },
-    {
-      id: "#456667",
-      paid: 294.0,
-      method: "Visa",
-      date: "16.12.2020, 14:21",
-    },
-    {
-      id: "#456667",
-      paid: 294.0,
-      method: "Paypal",
-      date: "16.12.2020, 14:21",
-    },
-    {
-      id: "#456667",
-      paid: 294.0,
-      method: "Mastercard",
-      date: "16.12.2020, 14:21",
-    },
-    {
-      id: "#456667",
-      paid: 294.0,
-      method: "Visa",
-      date: "16.12.2020, 14:21",
-    },
-    {
-      id: "#456667",
-      paid: 294.0,
-      method: "Mastercard",
-      date: "16.12.2020, 14:21",
-    },
-    {
-      id: "#456667",
-      paid: 294.0,
-      method: "Visa",
-      date: "16.12.2020, 14:21",
-    },
-    {
-      id: "#456667",
-      paid: 294.0,
-      method: "Mastercard",
-      date: "16.12.2020, 14:21",
-    },
-    {
-      id: "#456667",
-      paid: 294.0,
-      method: "Amex",
-      date: "16.12.2020, 14:21",
-    },
-  ];
+  const getPaymentIcon = (method?: string) => {
+    const normalized = method?.toLowerCase();
 
-  const getPaymentIcon = (method: string) => {
-    switch (method) {
-      case "Mastercard":
+    switch (normalized) {
+      case "mastercard":
         return (
           <div className="flex items-center space-x-2">
             <div className="flex">
               <div className="w-5 h-3 bg-red-500 rounded-l-full"></div>
               <div className="w-5 h-3 bg-yellow-500 rounded-r-full -ml-2"></div>
             </div>
-            <span className="text-sm text-gray-500">Master card</span>
+            <span className="text-sm text-gray-500">Mastercard</span>
           </div>
         );
-      case "Visa":
+
+      case "visa":
         return (
           <div className="flex items-center space-x-2">
             <div className="px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded">
@@ -93,7 +41,18 @@ const TransactionDashboard: React.FC = () => {
             <span className="text-sm text-gray-500">Visa</span>
           </div>
         );
-      case "Paypal":
+
+      case "stripe":
+        return (
+          <div className="flex items-center space-x-2">
+            <div className="px-2 py-1 bg-purple-600 text-white text-xs font-bold rounded">
+              STRIPE
+            </div>
+            <span className="text-sm text-gray-500">Stripe</span>
+          </div>
+        );
+
+      case "paypal":
         return (
           <div className="flex items-center space-x-2">
             <div className="w-6 h-4 bg-blue-600 rounded flex items-center justify-center">
@@ -102,7 +61,8 @@ const TransactionDashboard: React.FC = () => {
             <span className="text-sm text-gray-500">Paypal</span>
           </div>
         );
-      case "Amex":
+
+      case "amex":
         return (
           <div className="flex items-center space-x-2">
             <div className="w-6 h-4 bg-blue-400 rounded flex items-center justify-center">
@@ -111,17 +71,25 @@ const TransactionDashboard: React.FC = () => {
             <span className="text-sm text-gray-500">Amex</span>
           </div>
         );
+
       default:
-        return <span className="text-sm text-gray-500">{method}</span>;
+        return (
+          <span className="text-sm text-gray-400">{method || "Unknown"}</span>
+        );
     }
   };
 
   const filteredTransactions = transactions.filter((transaction) => {
+    const id = transaction.id ?? "";
+    const total = transaction.summary?.total ?? 0;
+    const method = transaction.paymentMethod ?? "";
+
     const matchesSearch =
-      transaction.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.paid.toString().includes(searchTerm);
-    const matchesMethod =
-      !selectedMethod || transaction.method === selectedMethod;
+      id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(total).includes(searchTerm);
+
+    const matchesMethod = !selectedMethod || method === selectedMethod;
+
     return matchesSearch && matchesMethod;
   });
 
@@ -129,8 +97,14 @@ const TransactionDashboard: React.FC = () => {
     setSelectedTransaction(transactionId);
   };
 
+  if (isLoading) {
+    return <p>Loading...</p>;
+  }
+  if (isError) {
+    return <p className="text-red-500">Something went wrong</p>;
+  }
   return (
-    <div className="min-h-screen w-full mx-auto">
+    <div className="min-h-screen w-full mx-auto ">
       <div className="bg-white rounded-[8px]">
         {/* Header */}
         <div className="pb-10 px-4 bg-[#FDF1F7] ">
@@ -163,7 +137,7 @@ const TransactionDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1  gap-6">
           {/* Transaction Table */}
           <div className="lg:col-span-2">
             {/* Search and Filter */}
@@ -222,7 +196,7 @@ const TransactionDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white ">
-                    {filteredTransactions.map((transaction, index) => (
+                    {filteredTransactions?.map((transaction, index) => (
                       <tr
                         key={`${transaction.id}-${index}`}
                         className={`hover:bg-gray-50 cursor-pointer ${
@@ -230,24 +204,35 @@ const TransactionDashboard: React.FC = () => {
                             ? "bg-purple-50"
                             : ""
                         }`}
-                        onClick={() =>
-                          handleTransactionSelect(`${transaction.id}-${index}`)
-                        }
+                        onClick={() => handleTransactionSelect(transaction._id)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap text-base font-normal text-[#1F1F1F]">
-                          {transaction.id}
+                          <span className="block sm:hidden">
+                            {transaction.id?.slice(0, 6)}...
+                          </span>
+
+                          <span className="hidden sm:block">
+                            {transaction.id}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-base font-normal text-[#1F1F1F]">
-                          ${transaction.paid.toFixed(2)}
+                          ${Number(transaction.summary?.total ?? 0).toFixed(2)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-base text-[#919191]">
-                          {getPaymentIcon(transaction.method)}
+                          {getPaymentIcon(transaction.paymentMethod)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-base font-normal text-[#919191]">
                           {transaction.date}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <button className="text-[12px] border border-[#E2E3E8] cursor-pointer rounded-[4px] py-2 px-4 text-[#1F1F1F] font-bold">
+                          <button
+                            onClick={() =>
+                              navigate(
+                                `/transaction-details-page/${transaction._id || transaction.id}`,
+                              )
+                            }
+                            className="text-[12px] border border-[#E2E3E8] cursor-pointer rounded-[4px] py-2 px-4 text-[#1F1F1F] font-bold"
+                          >
                             Details
                           </button>
                         </td>
@@ -255,16 +240,6 @@ const TransactionDashboard: React.FC = () => {
                     ))}
                   </tbody>
                 </table>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Panel */}
-          <div className="lg:col-span-1 ">
-            <div className="bg-[#FDF1F7] lg:h-[753px] rounded-lg shadow-sm mt-5 p-6 lg:mr-3">
-              <div className="text-center text-[#505050] text-base font-semibold py-12">
-                <p className="text-base">Please select transaction</p>
-                <p className="text-base">to see details</p>
               </div>
             </div>
           </div>
