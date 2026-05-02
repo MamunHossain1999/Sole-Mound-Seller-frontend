@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from "react";
 import { Search } from "lucide-react";
 import { IoIosArrowDown } from "react-icons/io";
@@ -5,126 +6,40 @@ import shoppingCart from "@/assets/ordarpageImg/Buy.svg";
 import { Link } from "react-router-dom";
 import DateRangeCalendar from "./DateRangeCalendar";
 import Pagination from "./Pagination";
+import {
+  useDeleteOrderMutation,
+  useGetAllOrdersQuery,
+} from "@/redux/api/orderApi";
+import { toast } from "react-toastify";
 
-interface Order {
-  id: string;
-  status: "Pending" | "Complete" | "Cancelled" | "On the way" | "In Progress";
-  amount: number;
-  customer: string;
-  orderType: string;
-  added: string;
-  method: string;
-}
+const OrderListPage: React.FC = () => {
+  const { data: orders = [], isLoading, isError } = useGetAllOrdersQuery();
+  const [deleteOrder] = useDeleteOrderMutation();
 
-const OrderDetailsPage: React.FC = () => {
-  const ordersData: Order[] = [
-    {
-      id: "53469-73",
-      status: "Pending",
-      amount: 56.234,
-      customer: "Ashley Foster",
-      orderType: "Company Delivery",
-      added: "29 Dec 2022",
-      method: "Mastercard",
-    },
-    {
-      id: "53469-74",
-      status: "Complete",
-      amount: 51.885,
-      customer: "Elsa Parker",
-      orderType: "Company Delivery",
-      added: "24 Dec 2022",
-      method: "Visa",
-    },
-    {
-      id: "53469-75",
-      status: "Cancelled",
-      amount: 56.519,
-      customer: "Eric Lawson",
-      orderType: "Company Delivery",
-      added: "12 Dec 2022",
-      method: "Mastercard",
-    },
-    {
-      id: "53469-76",
-      status: "On the way",
-      amount: 59.48,
-      customer: "Colin Hunt",
-      orderType: "Company Delivery",
-      added: "21 Oct 2022",
-      method: "Visa",
-    },
-    {
-      id: "53469-77",
-      status: "Complete",
-      amount: 50.09,
-      customer: "Georgia White",
-      orderType: "Company Delivery",
-      added: "21 Oct 2022",
-      method: "Mastercard",
-    },
-    {
-      id: "53469-78",
-      status: "Cancelled",
-      amount: 54.162,
-      customer: "Kate Richards",
-      orderType: "Company Delivery",
-      added: "21 Oct 2022",
-      method: "Mastercard",
-    },
-    {
-      id: "53469-79",
-      status: "On the way",
-      amount: 56.578,
-      customer: "Nash Ellis",
-      orderType: "Company Delivery",
-      added: "19 Sep 2022",
-      method: "Mastercard",
-    },
-    {
-      id: "53469-80",
-      status: "In Progress",
-      amount: 56.462,
-      customer: "Jackson Brooks",
-      orderType: "Company Delivery",
-      added: "19 Sep 2022",
-      method: "Mastercard",
-    },
-    {
-      id: "53469-81",
-      status: "Complete",
-      amount: 53.0,
-      customer: "Arthur Knight",
-      orderType: "Company Delivery",
-      added: "19 Sep 2022",
-      method: "Mastercard",
-    },
-    {
-      id: "53469-82",
-      status: "Complete",
-      amount: 5298,
-      customer: "Lucia James",
-      orderType: "Company Delivery",
-      added: "10 Aug 2022",
-      method: "Mastercard",
-    },
-  ];
-
+  // ✅ সব state আগে declare করতে হবে
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const itemsPerPage = 10;
+  const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [fromDate, setFromDate] = useState<Date | null>(null);
+  const [toDate, setToDate] = useState<Date | null>(null);
+
+  const itemsPerPage = pageSize; // ✅ pageSize অনুযায়ী items দেখাবে
+
   const getStatusColor = (status: string): string => {
-    switch (status) {
-      case "Pending":
+    switch (status?.toLowerCase()) {
+      case "pending":
         return "bg-[#F6E3AED1] text-[#505050]";
-      case "Complete":
+      case "completed":
         return "bg-[#D3F3DF] text-[#22C55E]";
-      case "Cancelled":
+      case "cancelled":
         return "bg-[#F57E7729] text-[#FF1C1C]";
-      case "On the way":
-        return "bg-[#FFE0E0] text-[#CC5F5F]";
-      case "In Progress":
+      case "processing":
         return "bg-[#19466A3D] text-[#5570F1]";
       default:
         return "bg-gray-100 text-gray-800";
@@ -132,10 +47,11 @@ const OrderDetailsPage: React.FC = () => {
   };
 
   const stats = {
-    total: ordersData.length,
-    pending: ordersData.filter((o) => o.status === "Pending").length,
-    completed: ordersData.filter((o) => o.status === "Complete").length,
-    cancelled: ordersData.filter((o) => o.status === "Cancelled").length,
+    total: orders.length,
+    pending: orders.filter((o: any) => o.status === "pending").length,
+    completed: orders.filter((o: any) => o.status === "completed").length,
+    cancelled: orders.filter((o: any) => o.status === "cancelled").length,
+    returned: orders.filter((o: any) => o?.returnStatus === "requested").length,
   };
 
   const orderOverview = [
@@ -151,30 +67,112 @@ const OrderDetailsPage: React.FC = () => {
       title: "Issues Summary",
       metrics: [
         { label: "Cancelled", value: stats.cancelled },
-        { label: "Returned", value: 0 },
+        { label: "Returned", value: stats.returned },
         { label: "Damaged", value: 0 },
       ],
     },
   ];
 
-  const filteredOrders = ordersData.filter(
-    (order) =>
-      order.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // ✅ Date range calculator
+  const getDateRange = (filter: string): { start: Date; end: Date } | null => {
+    const now = new Date();
+    const start = new Date();
+    const end = new Date();
+
+    switch (filter) {
+      case "This Week":
+        start.setDate(now.getDate() - now.getDay());
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
+      case "Last Week":
+        start.setDate(now.getDate() - now.getDay() - 7);
+        start.setHours(0, 0, 0, 0);
+        end.setDate(now.getDate() - now.getDay() - 1);
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
+      case "This Month":
+        start.setDate(1);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
+      case "Last Month":
+        start.setMonth(now.getMonth() - 1, 1);
+        start.setHours(0, 0, 0, 0);
+        end.setMonth(now.getMonth(), 0);
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
+      case "This Year":
+        start.setMonth(0, 1);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
+      case "Last Year":
+        start.setFullYear(now.getFullYear() - 1, 0, 1);
+        start.setHours(0, 0, 0, 0);
+        end.setFullYear(now.getFullYear() - 1, 11, 31);
+        end.setHours(23, 59, 59, 999);
+        return { start, end };
+      case "Date Range":
+        if (fromDate && toDate) {
+          const rangeEnd = new Date(toDate);
+          rangeEnd.setHours(23, 59, 59, 999);
+          return { start: fromDate, end: rangeEnd };
+        }
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  // ✅ Search + Date filter
+  const filteredOrders = orders.filter((order: any) => {
+    const matchesSearch =
+      order.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.shipping?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    let matchesDate = true;
+    if (selectedFilter) {
+      const range = getDateRange(selectedFilter);
+      const dateField = order.date || order.createdAt;
+      if (range && dateField) {
+        const orderDate = new Date(dateField);
+        matchesDate = orderDate >= range.start && orderDate <= range.end;
+      }
+    }
+
+    return matchesSearch && matchesDate;
+  });
+
+  // ✅ Checkbox handlers stert
+  // ================= CHECKBOX =================
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      // ⚠️ filteredOrders use করতে হবে (current visible list)
+      setSelectedCustomers(filteredOrders.map((order: any) => order.id));
+    } else {
+      setSelectedCustomers([]);
+    }
+  };
+
+  const handleSelectCustomer = (id: string, checked: boolean) => {
+    setSelectedCustomers((prev) =>
+      checked ? [...prev, id] : prev.filter((item) => item !== id),
+    );
+  };
+
+  const isAllSelected =
+    filteredOrders.length > 0 &&
+    filteredOrders.every((order: any) => selectedCustomers.includes(order.id));
+
+  const isIndeterminate = selectedCustomers.length > 0 && !isAllSelected;
+  // checkbox end
 
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentOrders = filteredOrders.slice(startIndex, endIndex);
-
-  //   filter orders by date if a filter is selected
-  const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
-  //   date sorting er jnno
-  const [fromDate, setFromDate] = useState<Date | null>(null);
-  const [toDate, setToDate] = useState<Date | null>(null);
 
   const dateOptions = [
     "This Week",
@@ -196,13 +194,45 @@ const OrderDetailsPage: React.FC = () => {
     }
   };
 
-  //   filter data
   const applyFilter = () => {
-    console.log("Applied filter:", {
-      selectedFilter,
-    });
+    setCurrentPage(1);
     setShowDropdown(false);
   };
+
+  // ✅ Filter clear করার function
+  const clearFilter = () => {
+    setSelectedFilter(null);
+    setFromDate(null);
+    setToDate(null);
+    setShowCalendar(false);
+    setCurrentPage(1);
+    setShowDropdown(false);
+  };
+
+  // delete order
+
+  const openDeleteModal = (id: string) => {
+    setSelectedOrderId(id);
+    setIsDeleteModalOpen(true);
+  };
+  const handleDelete = async () => {
+    if (!selectedOrderId) return;
+
+    try {
+      await deleteOrder(selectedOrderId).unwrap();
+
+      toast.success("Order deleted successfully");
+
+      setIsDeleteModalOpen(false);
+      setSelectedOrderId(null);
+    } catch (error) {
+      toast.error("Delete failed");
+      console.error(error);
+    }
+  };
+
+  if (isLoading) return <p>Loading...</p>;
+  if (isError) return <p className="text-red-500">Error loading orders</p>;
 
   return (
     <div className="min-h-screen bg-[#FDF1F7] pb-5">
@@ -251,19 +281,13 @@ const OrderDetailsPage: React.FC = () => {
                 <path d="m9 18 6-6-6-6" />
               </svg>
             </span>
-            <span className="text-sm font-medium text-[#919191]">
-               <Link to="/orders-details" className="text-sm font-medium ">
-              Orders list
-            </Link>
-            </span>
           </nav>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-6">
-          {orderOverview.map((group, index) => (
+          {orderOverview?.map((group, index) => (
             <div key={index} className="bg-white p-5 rounded-[12px] shadow-sm">
-              {/* Top: Icon + This Week Dropdown */}
               <div className="flex justify-between items-center mb-4">
                 <div className="bg-[#FDF1F7] p-3 rounded-md">
                   <img
@@ -276,9 +300,7 @@ const OrderDetailsPage: React.FC = () => {
                   This Week <IoIosArrowDown className="w-4 h-4" />
                 </p>
               </div>
-
-              {/* Bottom: Metrics */}
-              <div className="grid grid-cols-3 ">
+              <div className="grid grid-cols-3">
                 {group.metrics.map((metric, i) => (
                   <div key={i}>
                     <p className="text-sm font-medium text-[#919191]">
@@ -298,20 +320,29 @@ const OrderDetailsPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm">
           <div className="p-6 border-b border-gray-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
-              {/* Title */}
               <h2 className="text-base font-semibold text-[#000000]">
                 Customer Orders
+                {/* ✅ Active filter badge */}
+                {selectedFilter && (
+                  <span className="ml-2 text-xs bg-[#C8A8E9] text-white px-2 py-0.5 rounded-full">
+                    {selectedFilter}
+                    <button onClick={clearFilter} className="ml-1 font-bold">
+                      ×
+                    </button>
+                  </span>
+                )}
               </h2>
-
-              {/* search bar and controls */}
               <div className="flex flex-wrap items-start sm:items-center gap-4 sm:gap-6">
                 {/* Search Bar */}
                 <div className="relative w-full sm:w-auto">
                   <input
                     type="text"
-                    placeholder="Search product..."
+                    placeholder="Search by name or order ID..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1); // ✅ search করলে page 1 এ যাবে
+                    }}
                     className="pl-4 pr-10 py-2 w-full sm:w-64 border border-[#B6B7BC] rounded-[12px] focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent"
                   />
                   <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -334,74 +365,74 @@ const OrderDetailsPage: React.FC = () => {
                         <path
                           d="M1.09277 8.40445H18.9167"
                           stroke="#53545C"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
                         <path
                           d="M14.442 12.3097H14.4512"
                           stroke="#53545C"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
                         <path
                           d="M10.0045 12.3097H10.0137"
                           stroke="#53545C"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
                         <path
                           d="M5.55769 12.3097H5.56695"
                           stroke="#53545C"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
                         <path
                           d="M14.442 16.1964H14.4512"
                           stroke="#53545C"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
                         <path
                           d="M10.0045 16.1964H10.0137"
                           stroke="#53545C"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
                         <path
                           d="M5.55769 16.1964H5.56695"
                           stroke="#53545C"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
                         <path
                           d="M14.0438 1V4.29078"
                           stroke="#53545C"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
                         <path
                           d="M5.96564 1V4.29078"
                           stroke="#53545C"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
                         <path
-                          fill-rule="evenodd"
-                          clip-rule="evenodd"
+                          fillRule="evenodd"
+                          clipRule="evenodd"
                           d="M14.2383 2.57959H5.77096C2.83427 2.57959 1 4.21552 1 7.22262V16.2723C1 19.3266 2.83427 21.0004 5.77096 21.0004H14.229C17.175 21.0004 19 19.355 19 16.3479V7.22262C19.0092 4.21552 17.1842 2.57959 14.2383 2.57959Z"
                           stroke="#53545C"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
                       </svg>
                     </span>
@@ -410,30 +441,39 @@ const OrderDetailsPage: React.FC = () => {
 
                   {showDropdown && (
                     <div className="absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg z-10 border border-gray-200 p-4">
-                      <h3 className="font-medium text-base text-[#1F1F1F] mb-3">
-                        By Date
-                      </h3>
-
+                      <div className="flex justify-between items-center mb-3">
+                        <h3 className="font-medium text-base text-[#1F1F1F]">
+                          By Date
+                        </h3>
+                        {/* ✅ Clear button */}
+                        {selectedFilter && (
+                          <button
+                            onClick={clearFilter}
+                            className="text-xs text-red-400 hover:text-red-600"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
                       <div className="grid grid-cols-2 gap-2 mb-4">
                         {dateOptions.map((option) => (
                           <div
                             key={option}
-                            className={`flex items-center p-1 rounded ${
-                              selectedFilter === option
-                                ? "text-[#83898C] text-base"
-                                : "text-[#83898C]"
-                            }`}
+                            className="flex items-center p-1 rounded text-[#83898C] cursor-pointer"
                             onClick={() => handleFilterClick(option)}
                           >
                             <div className="relative flex items-center justify-center w-5 h-5">
                               <input
-                                type="checkbox"
-                                checked={selectedFilter === option}
-                                readOnly
-                                name="selectAll"
+                                checked={isAllSelected}
+                                ref={(el) => {
+                                  if (el) el.indeterminate = isIndeterminate;
+                                }}
+                                onChange={(e) =>
+                                  handleSelectAll(e.target.checked)
+                                }
                                 className="peer w-full h-full accent-[#C8A8E9] bg-white border border-[#C8A8E9] rounded appearance-none checked:bg-[#C8A8E9] checked:border-transparent"
                               />
-                              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-white text-xs font-bold peer-checked:flex ">
+                              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-white text-xs font-bold peer-checked:flex">
                                 ✓
                               </span>
                             </div>
@@ -446,7 +486,6 @@ const OrderDetailsPage: React.FC = () => {
 
                       {showCalendar && (
                         <div className="mb-4">
-                          {/* From / To Toggle Button */}
                           <DateRangeCalendar
                             fromDate={fromDate}
                             toDate={toDate}
@@ -456,7 +495,6 @@ const OrderDetailsPage: React.FC = () => {
                         </div>
                       )}
 
-                      {/* button */}
                       <button
                         onClick={applyFilter}
                         className="w-full bg-[#C8A8E9] text-[#FFF] text-base font-semibold py-2 rounded-[8px] hover:bg-purple-300 transition-colors"
@@ -466,54 +504,34 @@ const OrderDetailsPage: React.FC = () => {
                     </div>
                   )}
                 </div>
-
-                {/* Share Button */}
-                <button className="w-full sm:w-auto bg-[#C8A8E9] text-base text-[#1F1F1F] px-4 py-2 rounded-[8px] flex items-center justify-center sm:justify-start gap-3 hover:bg-purple-300 transition-colors">
-                  <span className="w-[18px] h-[18px] flex items-center justify-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
-                      viewBox="0 0 20 20"
-                      fill="none"
-                    >
-                      <path
-                        d="M13.8325 6.17463L8.10904 11.9592L1.59944 7.88767C0.66675 7.30414 0.860765 5.88744 1.91572 5.57893L17.3712 1.05277C18.3373 0.769629 19.2326 1.67283 18.9456 2.642L14.3731 18.0868C14.0598 19.1432 12.6512 19.332 12.0732 18.3953L8.10601 11.9602"
-                        stroke="#53545C"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </span>
-                  Share
-                </button>
               </div>
             </div>
           </div>
+
           {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-[#FDF1F7]">
                 <tr>
-                  {/* Checkbox + Order ID */}
                   <th className="px-6 py-3 text-left text-base font-semibold text-[#505050] tracking-wider">
                     <div className="flex items-center gap-4">
                       <div className="relative flex items-center justify-center w-5 h-5">
                         <input
                           type="checkbox"
-                          name="selectAll"
+                          checked={isAllSelected}
+                          ref={(el) => {
+                            if (el) el.indeterminate = isIndeterminate;
+                          }}
+                          onChange={(e) => handleSelectAll(e.target.checked)}
                           className="peer w-full h-full accent-[#C8A8E9] bg-white border border-gray-300 rounded appearance-none checked:bg-[#C8A8E9] checked:border-transparent"
                         />
-                        <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-white text-xs font-bold peer-checked:flex hidden">
+                        <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-white text-xs font-bold hidden peer-checked:flex">
                           ✓
                         </span>
                       </div>
                       Order ID
                     </div>
                   </th>
-
-                  {/* Status */}
                   <th className="px-6 py-3 text-left text-base font-semibold text-[#505050] tracking-wider">
                     <div className="flex items-center cursor-pointer">
                       Status
@@ -531,18 +549,12 @@ const OrderDetailsPage: React.FC = () => {
                       </svg>
                     </div>
                   </th>
-
                   <th className="px-6 py-3 text-left text-base font-semibold text-[#505050] tracking-wider">
                     Amount
                   </th>
                   <th className="px-6 py-3 text-left text-base font-semibold text-[#505050] tracking-wider">
                     Customer
                   </th>
-                  <th className="px-6 py-3 text-left text-base font-semibold text-[#505050] tracking-wider">
-                    Order Type
-                  </th>
-
-                  {/* Added */}
                   <th className="px-6 py-3 text-left text-base font-semibold text-[#505050] tracking-wider">
                     <div className="flex items-center cursor-pointer">
                       Added
@@ -560,7 +572,6 @@ const OrderDetailsPage: React.FC = () => {
                       </svg>
                     </div>
                   </th>
-
                   <th className="px-6 py-3 text-left text-base font-semibold text-[#505050] tracking-wider">
                     Method
                   </th>
@@ -571,8 +582,8 @@ const OrderDetailsPage: React.FC = () => {
               </thead>
 
               <tbody className="bg-white divide-y divide-gray-200">
-                {currentOrders?.map((order, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
+                {currentOrders?.map((order: any, index: number) => (
+                  <tr key={order.id || index} className="hover:bg-gray-50">
                     {/* Checkbox + Order ID */}
                     <td className="px-6 py-4 whitespace-nowrap text-base text-[#6E7079]">
                       <div className="flex items-center gap-4">
@@ -580,14 +591,18 @@ const OrderDetailsPage: React.FC = () => {
                           <input
                             type="checkbox"
                             name="select"
+                            checked={selectedCustomers.includes(order.id)}
+                            onChange={(e) =>
+                              handleSelectCustomer(order.id, e.target.checked)
+                            }
                             className="peer w-full h-full accent-[#C8A8E9] bg-white border border-gray-300 rounded appearance-none checked:bg-[#C8A8E9] checked:border-transparent"
                           />
-                          <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-white text-xs font-bold peer-checked:flex hidden">
+                          <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-white text-xs font-bold hidden peer-checked:flex">
                             ✓
                           </span>
                         </div>
                         <span className="text-[#505050] font-semibold">
-                          #{order.id}
+                          #{order.id?.slice(-6)?.toUpperCase()}
                         </span>
                       </div>
                     </td>
@@ -595,9 +610,7 @@ const OrderDetailsPage: React.FC = () => {
                     {/* Status */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`inline-flex px-2 py-1 text-sm font-medium rounded-[8px] ${getStatusColor(
-                          order.status
-                        )}`}
+                        className={`inline-flex px-2 py-1 text-sm font-medium rounded-[8px] ${getStatusColor(order.status)}`}
                       >
                         {order.status}
                       </span>
@@ -605,46 +618,68 @@ const OrderDetailsPage: React.FC = () => {
 
                     {/* Amount */}
                     <td className="px-6 py-4 whitespace-nowrap text-base text-[#505050]">
-                      ${order.amount.toFixed(3)}
+                      $
+                      {Number(
+                        order.summary?.subtotal ??
+                          order.totalAmount ??
+                          order.amount ??
+                          0,
+                      ).toFixed(2)}
                     </td>
 
                     {/* Customer */}
                     <td className="px-6 py-4 whitespace-nowrap text-base text-[#3CA6FC] hover:text-blue-300 cursor-pointer">
-                      {order.customer}
-                    </td>
-
-                    {/* Order Type */}
-                    <td className="px-6 py-4 whitespace-nowrap text-base text-[#6E7079]">
-                      {order.orderType}
+                      {order.shipping?.name ?? order.customer ?? "N/A"}
                     </td>
 
                     {/* Added */}
                     <td className="px-6 py-4 whitespace-nowrap text-base text-[#505050]">
-                      {order.added}
+                      {order.date || order.createdAt
+                        ? new Date(
+                            order.date || order.createdAt,
+                          ).toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "—"}
                     </td>
 
                     {/* Method */}
                     <td className="px-6 py-4 whitespace-nowrap text-base text-[#505050]">
-                      {order.method}
+                      {order.paymentMethod ?? "—"}
                     </td>
 
                     {/* Actions */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        {/* Edit */}
-                        <button className="cursor-pointer">
-                          <svg width="16" height="16" fill="none">
+                        {/* delete */}
+                        <button
+                          onClick={() => openDeleteModal(order.id)}
+                          className="cursor-pointer"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
                             <path
-                              d="M8 13.333H14M11.25 1.472c.3-.302.71-.472 1.14-.472.21 0 .42.042.615.123.195.081.373.2.522.35.15.15.268.327.35.523.08.194.122.404.123.615 0 .211-.042.421-.123.617a1.7 1.7 0 01-.35.521L4.037 13.24 1 14l.759-3.037L11.25 1.472Z"
+                              d="M4.687 6.21262L6.8 18.9756C6.89665 19.5599 7.19759 20.0909 7.6492 20.474C8.10081 20.8571 8.67377 21.0675 9.266 21.0676H12.614M19.312 6.21262L17.2 18.9756C17.1033 19.5599 16.8024 20.0909 16.3508 20.474C15.8992 20.8571 15.3262 21.0675 14.734 21.0676H11.386M10.022 11.1156V16.1646M13.978 11.1156V16.1646M2.75 6.21262H21.25M14.777 6.21262V4.43262C14.777 4.03479 14.619 3.65326 14.3377 3.37196C14.0564 3.09065 13.6748 2.93262 13.277 2.93262H10.723C10.3252 2.93262 9.94364 3.09065 9.66234 3.37196C9.38104 3.65326 9.223 4.03479 9.223 4.43262V6.21262H14.777Z"
                               stroke="#505050"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                              stroke-width="1.5"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
                             />
                           </svg>
                         </button>
-                        {/* View */}
-                        <button className="cursor-pointer">
+
+                        {/* view */}
+                        <Link
+                          to={`/orders-details-page/${order.id}`}
+                          className="cursor-pointer"
+                        >
                           <svg width="24" height="24" fill="none">
                             <path
                               d="M22 12c-1.747 3.576-6.123 7-10 7s-8.253-3.424-10-7"
@@ -670,14 +705,52 @@ const OrderDetailsPage: React.FC = () => {
                               strokeLinejoin="round"
                             />
                           </svg>
-                        </button>
+                        </Link>
                       </div>
                     </td>
                   </tr>
                 ))}
+
+                {currentOrders.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-6 py-10 text-center text-gray-400 text-sm"
+                    >
+                      No orders found.
+                    </td>
+                  </tr>
+                )}
               </tbody>
+              {/* modal show */}
+              {isDeleteModalOpen && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+                  <div className="bg-white p-6 rounded-lg w-[300px]">
+                    <h2 className="text-lg font-semibold mb-4">
+                      Are you sure?
+                    </h2>
+
+                    <div className="flex justify-end gap-3">
+                      <button
+                        onClick={() => setIsDeleteModalOpen(false)}
+                        className="px-4 py-2 cursor-pointer bg-gray-200 rounded"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        onClick={handleDelete}
+                        className="px-4 py-2 bg-red-500 cursor-pointer text-white rounded"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </table>
           </div>
+
           {/* Pagination */}
           <Pagination
             currentPage={currentPage}
@@ -692,11 +765,10 @@ const OrderDetailsPage: React.FC = () => {
               setCurrentPage(1);
             }}
           />
-          ;
         </div>
       </div>
     </div>
   );
 };
 
-export default OrderDetailsPage;
+export default OrderListPage;

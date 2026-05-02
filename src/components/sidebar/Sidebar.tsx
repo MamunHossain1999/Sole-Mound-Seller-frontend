@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 
 import logo from "@/assets/logo/Logo.png";
 
-// Sidebar icons (normal icons)
+// Normal Icons
 import dashboard from "@/assets/sideberIcon/dashboard.svg";
 import order from "@/assets/sideberIcon/order.svg";
 import product from "@/assets/sideberIcon/product.svg";
@@ -19,7 +19,7 @@ import review from "@/assets/sideberIcon/review.svg";
 import support from "@/assets/sideberIcon/support.svg";
 import logout from "@/assets/sideberIcon/Logout.svg";
 
-// Sidebar icons (white/active state)
+// White / Active Icons
 import dashboardWhite from "@/assets/sidebarIconWhite/dashboard.svg";
 import orderWhite from "@/assets/sidebarIconWhite/order.svg";
 import productWhite from "@/assets/sidebarIconWhite/product.svg";
@@ -33,16 +33,17 @@ import conversationWhite from "@/assets/sidebarIconWhite/conversion.svg";
 import reviewWhite from "@/assets/sidebarIconWhite/category.svg";
 import supportWhite from "@/assets/sidebarIconWhite/Customer Support (2).svg";
 
-// MenuItem type define 
+import { useLogoutUserMutation } from "@/redux/api/authApi";
+import { toast } from "react-toastify";
+
 type MenuItem = {
-  label: string; 
+  label: string;
   icon: string;
-  activeIcon: string; 
-  path: string; // Navigate path
-  children?: { label: string; path: string }[]; // jodi submenu thake
+  activeIcon: string;
+  path: string;
+  children?: { label: string; path: string }[];
 };
 
-// sob menu items ekta array te rakha holo
 const menuItems: MenuItem[] = [
   { label: "Dashboard", icon: dashboard, activeIcon: dashboardWhite, path: "/" },
   { label: "Orders", icon: order, activeIcon: orderWhite, path: "/orders" },
@@ -50,10 +51,12 @@ const menuItems: MenuItem[] = [
     label: "Products",
     icon: product,
     activeIcon: productWhite,
-    path: "/products",
+    path: "/products-list",           // Default path when clicking "Products"
     children: [
       { label: "List", path: "/products-list" },
       { label: "Create", path: "/products-form" },
+      { label: "BannerCreate", path: "/banner-create" },
+      { label: "BannerPage", path: "/banner-page" },
     ],
   },
   { label: "Customers", icon: customer, activeIcon: customerWhite, path: "/customers" },
@@ -67,35 +70,66 @@ const menuItems: MenuItem[] = [
   { label: "Support", icon: support, activeIcon: supportWhite, path: "/support" },
 ];
 
-// active link er jnno class define kora holo
 const getNavLinkClass = (isActive: boolean) => {
-  const base =
-    "group flex gap-3 items-center px-3 py-2 mt-3 rounded-[12px] text-base font-medium transition-all duration-200";
+  const base = "group flex gap-3 items-center px-3 py-2 mt-3 rounded-[12px] text-base font-medium transition-all duration-200";
   return isActive
-    ? `${base} bg-[#C8A8E9] text-white` 
-    : `${base} text-[#505050] hover:bg-gray-100`; 
+    ? `${base} bg-[#C8A8E9] text-white`
+    : `${base} text-[#505050] hover:bg-gray-100`;
 };
 
 const Sidebar = ({
-  isOpen = false, // Mobile sidebar open ase kina
-  setIsOpen = () => {}, // Sidebar open/close korar function
+  isOpen = false,
+  setIsOpen = () => {},
 }: {
   isOpen?: boolean;
   setIsOpen?: (v: boolean) => void;
 }) => {
-  const [isCollapsed] = useState(false); // Sidebar collapse state (akane fixed false rakha hoyeche)
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null); // kon dropdown khola ache
-  const [selectedProductOption, setSelectedProductOption] = useState("/products"); // Product submenu select state
-
-  const toggleDropdown = (label: string) => {
-    setOpenDropdown(openDropdown === label ? null : label); // age jodi khola thake tahole bondho koro
-  };
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [selectedProductOption, setSelectedProductOption] = useState("/products-list");
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const [logoutUser] = useLogoutUserMutation();
+
+  // Auto manage dropdown and selected radio when route changes
+  useEffect(() => {
+    const path = location.pathname;
+
+    if (path === "/products-list" || path === "/products-form") {
+      setOpenDropdown("Products");
+      setSelectedProductOption(path);
+    } else {
+      setOpenDropdown(null);
+    }
+  }, [location.pathname]);
+
+  const toggleDropdown = (label: string) => {
+    if (openDropdown === label) {
+      setOpenDropdown(null);
+    } else {
+      setOpenDropdown(label);
+      // Products এ ক্লিক করলে সবসময় List active হয়ে যাবে
+      if (label === "Products") {
+        setSelectedProductOption("/products-list");
+        navigate("/products-list");
+      }
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser().unwrap();
+      toast.success("Logged out successfully");
+      window.location.href = "/";
+    } catch (error) {
+      console.error(error);
+      toast.error("Logout failed");
+    }
+  };
 
   return (
     <>
-      {/* Mobile backdrop click korle sidebar bondho hobe */}
+      {/* Mobile Backdrop */}
       <div
         className={`fixed inset-0 bg-purple-200 bg-opacity-40 z-30 lg:hidden transition-opacity ${
           isOpen ? "opacity-100 visible pointer-events-auto" : "opacity-0 invisible pointer-events-none"
@@ -103,67 +137,54 @@ const Sidebar = ({
         onClick={() => setIsOpen(false)}
       />
 
-      {/* Sidebar container */}
+      {/* Sidebar */}
       <div
-        className={`fixed top-0 left-0 h-full bg-white shadow-lg z-40 transition-all duration-300 overflow-y-auto
-          ${isCollapsed ? "w-16" : "w-64"} 
+        className={`fixed top-0 left-0 h-full bg-white shadow-lg z-40 transition-all duration-300 overflow-y-auto w-64 
           ${isOpen ? "translate-x-0" : "-translate-x-full"} 
-          md:translate-x-0 md:static md:block md:${isCollapsed ? "w-16" : "w-52"} 
-          lg:${isCollapsed ? "w-16" : "w-64"}`}
-        style={{ WebkitOverflowScrolling: "touch" }}
+          md:translate-x-0 md:static`}
       >
-        {/* Logo section */}
-        <div className="p-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 w-[202px] mx-auto">
-            <img src={logo} className="w-[68px] h-[68px]" alt="Logo" />
-            {!isCollapsed && <p className="text-[20px] font-bold text-[#505050]">Sole Mound</p>}
+        {/* Logo */}
+        <div className="p-6 flex items-center justify-center border-b">
+          <div className="flex items-center gap-3">
+            <img src={logo} className="w-16 h-16" alt="Logo" />
+            <p className="text-2xl font-bold text-[#505050]">Sole Mound</p>
           </div>
         </div>
 
-        {/* Nav menu list */}
-        <nav className="mt-4 w-[202px] mx-auto">
-          {menuItems?.map((item) => {
-            const hasChildren = item.children && item.children.length > 0; // submenu ase kina ter jnno
+        {/* Menu Items */}
+        <nav className="px-4 py-6">
+          {menuItems.map((item) => {
+            const hasChildren = !!item.children?.length;
             const isDropdownOpen = openDropdown === item.label;
 
             if (hasChildren) {
-              // ata dropdown menu sub menur jnno
               return (
-                <div key={item.label} className="mb-1">
+                <div key={item.label} className="mb-2">
+                  {/* Products Main Item */}
                   <div
-                    onClick={() => {
-                      toggleDropdown(item.label);
-                      navigate(item.path);
-                    }}
-                    className={`${getNavLinkClass(isDropdownOpen)} ${
-                      isCollapsed ? "justify-center" : "cursor-pointer"
-                    } flex items-center justify-between`}
+                    onClick={() => toggleDropdown(item.label)}
+                    className={`${getNavLinkClass(isDropdownOpen)} flex items-center justify-between cursor-pointer`}
                   >
-                    {/* Icon + Label */}
                     <div className="flex items-center gap-3">
                       <img
                         src={isDropdownOpen ? item.activeIcon : item.icon}
                         className="w-6 h-6"
                         alt={item.label}
                       />
-                      {!isCollapsed && (
-                        <span className={isDropdownOpen ? "text-white" : "text-[#505050]"}>{item.label}</span>
-                      )}
+                      <span>{item.label}</span>
                     </div>
-                    {!isCollapsed && (
-                      <ChevronRight
-                        className={`w-4 h-4 transition-transform ${isDropdownOpen ? "rotate-90" : ""}`}
-                      />
-                    )}
+                    <ChevronRight
+                      className={`w-5 h-5 transition-transform ${isDropdownOpen ? "rotate-90" : ""}`}
+                    />
                   </div>
 
-                  {/* Dropdown menu - just Products er jnno */}
-                  {isDropdownOpen && !isCollapsed && item.label === "Products" && (
-                    <div className="ml-8 mt-3 flex flex-col gap-2">
+                  {/* Submenu - Radio Style */}
+                  {isDropdownOpen && (
+                    <div className="ml-9 mt-3 flex flex-col gap-2">
                       {item.children?.map((child) => (
                         <label
                           key={child.path}
-                          className="flex items-center gap-3 cursor-pointer text-sm text-[#505050]"
+                          className="flex items-center gap-3 cursor-pointer text-sm text-[#505050] py-1"
                         >
                           <input
                             type="radio"
@@ -176,9 +197,8 @@ const Sidebar = ({
                             }}
                             className="hidden peer"
                           />
-                          {/* Custom radio design */}
-                          <div className="w-5 h-5 rounded-full border border-gray-300 bg-white flex items-center justify-center peer-checked:bg-[#E3AADD] peer-checked:border-[#C8A8E9] transition-colors">
-                            <div className="w-2 h-2 rounded-full bg-white peer-checked:block"></div>
+                          <div className="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center peer-checked:bg-[#C8A8E9]">
+                            <div className="w-2.5 h-2.5 bg-[#C8A8E9] rounded-full scale-0 peer-checked:scale-100 transition-all" />
                           </div>
                           <span>{child.label}</span>
                         </label>
@@ -189,7 +209,7 @@ const Sidebar = ({
               );
             }
 
-            // Normal nav item (dropdown sara)
+            // Normal Menu Items
             return (
               <NavLink
                 key={item.label}
@@ -198,13 +218,13 @@ const Sidebar = ({
                 className={({ isActive }) => getNavLinkClass(isActive)}
               >
                 {({ isActive }) => (
-                  <div className={`${isCollapsed ? "justify-center" : ""} flex items-center gap-3`}>
+                  <div className="flex items-center gap-3">
                     <img
                       src={isActive ? item.activeIcon : item.icon}
                       className="w-6 h-6"
                       alt={item.label}
                     />
-                    {!isCollapsed && <span className={isActive ? "text-white" : "text-[#505050]"}>{item.label}</span>}
+                    <span>{item.label}</span>
                   </div>
                 )}
               </NavLink>
@@ -212,15 +232,14 @@ const Sidebar = ({
           })}
         </nav>
 
-        {/* Logout button */}
-        <div className="bottom-4 px-4 w-full md:pt-28">
+        {/* Logout */}
+        <div className="absolute bottom-8 w-full px-6">
           <div
-            className={`flex items-center gap-2 text-sm font-normal ml-4 text-[#A8537B] px-3 py-2 rounded-md cursor-pointer ${
-              isCollapsed ? "justify-center" : ""
-            }`}
+            onClick={handleLogout}
+            className="flex items-center gap-3 text-[#A8537B] hover:text-red-600 cursor-pointer px-3 py-3 rounded-xl hover:bg-gray-100 transition-all"
           >
             <img src={logout} className="w-6 h-6" alt="Logout" />
-            {!isCollapsed && <span className="font-normal text-sm">Logout</span>}
+            <span className="font-medium">Logout</span>
           </div>
         </div>
       </div>

@@ -174,6 +174,8 @@ const CategoryManagement: React.FC = () => {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [selectedDeleteId, setSelectedDeleteId] = useState<string | null>(null);
 
   const navigate = useNavigate();
 
@@ -194,6 +196,24 @@ const CategoryManagement: React.FC = () => {
     startIndex,
     startIndex + itemsPerPage,
   );
+
+  // delete modal show
+  const handleDeleteClick = (id: string) => {
+    setSelectedDeleteId(id);
+    setDeleteModalOpen(true);
+  };
+  // confirm delete
+  const confirmDelete = async () => {
+    if (!selectedDeleteId) return;
+
+    try {
+      await deleteCategory({ name: selectedDeleteId }).unwrap();
+      setDeleteModalOpen(false);
+      setSelectedDeleteId(null);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   // ── Select All ──
   const handleSelectAll = (checked: boolean): void => {
@@ -228,17 +248,6 @@ const CategoryManagement: React.FC = () => {
     }
   };
 
-  // ── Delete ──
-  const handleDelete = async (name: string) => {
-    console.log("Deleting category:", name);
-
-    try {
-      await deleteCategory({ name }).unwrap();
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
   // ── Items Per Page ──
   const handleItemsPerPageChange = (
     e: React.ChangeEvent<HTMLSelectElement>,
@@ -270,8 +279,10 @@ const CategoryManagement: React.FC = () => {
               </span>
             </div>
           </div>
-          <Link to="/products-form"
-           className="flex items-center justify-center px-4 py-2 gap-2 bg-[#C8A8E9] text-[#1F1F1F] text-base rounded-[8px] font-semibold hover:bg-purple-300 cursor-pointer transition-colors">
+          <Link
+            to="/products-form"
+            className="flex items-center justify-center px-4 py-2 gap-2 bg-[#C8A8E9] text-[#1F1F1F] text-base rounded-[8px] font-semibold hover:bg-purple-300 cursor-pointer transition-colors"
+          >
             Add New
             <Plus className="w-4 h-4" />
           </Link>
@@ -377,9 +388,8 @@ const CategoryManagement: React.FC = () => {
                       <div className="flex items-center justify-center space-x-2">
                         {/* Delete */}
                         <button
-                          onClick={() => handleDelete(category.id)} // ✅ id = category name
+                          onClick={() => handleDeleteClick(category.id)}
                           className="p-1 cursor-pointer hover:opacity-70 transition-opacity"
-                          aria-label="Delete"
                         >
                           <DeleteIcon />
                         </button>
@@ -411,6 +421,36 @@ const CategoryManagement: React.FC = () => {
             </table>
           </div>
 
+          {/* delete modal add */}
+          {deleteModalOpen && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+              <div className="bg-white rounded-lg p-6 w-[350px] shadow-lg">
+                <h2 className="text-lg font-semibold text-gray-800">
+                  Are you sure?
+                </h2>
+
+                <p className="text-sm text-gray-500 mt-2">
+                  This action cannot be undone.
+                </p>
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    onClick={() => setDeleteModalOpen(false)}
+                    className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    onClick={confirmDelete}
+                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {/* ── Pagination ── */}
           <div className="px-6 bg-[#FDF1F7] py-4 border-t border-gray-200 pb-12 flex items-center justify-between">
             <p className="text-sm text-gray-500">

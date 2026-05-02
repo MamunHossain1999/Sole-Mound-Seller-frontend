@@ -1,479 +1,577 @@
-import React, { useState } from "react";
-import { Search, Send, Paperclip } from "lucide-react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useEffect, useState, useRef } from "react";
+import { Send, Trash2, Search, MessageSquare } from "lucide-react";
+import { socket } from "@/components/socket/socket";
+import { useGetAllUsersQuery, useGetProfileQuery } from "@/redux/api/userApi";
+import {
+  useDeleteMessageMutation,
+  useGetChatQuery,
+  useMarkSeenMutation,
+  useSendMessageMutation,
+} from "@/redux/api/chatApi";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Contact {
   id: string;
   name: string;
-  avatar: string;
+  avatar?: string;
   lastMessage: string;
   time: string;
   status: "online" | "offline";
-  unreadCount?: number;
-  isNew?: boolean;
 }
 
 interface Message {
-  id: string;
+  id?: string;
   sender: "user" | "contact";
   content: string;
   time: string;
   type: "text" | "product";
-  productInfo?: {
-    name: string;
-    price: string;
-    stock: number;
-    image: string;
-  };
 }
 
+// ─── Shared Style Tokens ──────────────────────────────────────────────────────
+
+const PINK_BG = "#fdf6fd";
+const PINK_BORDER = "#f0e6f0";
+const PINK_ACCENT = "#b87ab8";
+const PINK_LIGHT = "#f5eaf5";
+
+// ─── Avatar ───────────────────────────────────────────────────────────────────
+
+function Avatar({
+  name,
+  avatar,
+  size = 10,
+  online,
+}: {
+  name: string;
+  avatar?: string;
+  size?: number;
+  online?: boolean;
+}) {
+  const sz = `w-${size} h-${size}`;
+  return (
+    <div className="relative flex-shrink-0">
+      {avatar ? (
+        <img
+          src={avatar}
+          alt={name}
+          className={`${sz} rounded-full object-cover`}
+          style={{ border: `2px solid ${PINK_BORDER}` }}
+        />
+      ) : (
+        <div
+          className={`${sz} rounded-full flex items-center justify-center font-semibold text-white select-none`}
+          style={{ background: PINK_ACCENT, fontSize: size * 1.5 }}
+        >
+          {name.charAt(0).toUpperCase()}
+        </div>
+      )}
+      {online !== undefined && (
+        <span
+          className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white"
+          style={{ background: online ? "#22c55e" : "#d1d5db" }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 const ConversationsDashboard: React.FC = () => {
-  const [selectedContact, setSelectedContact] = useState<string>("jane-doe");
+  const [selectedContact, setSelectedContact] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
 
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+  // ── Current User ──
+  const { data: profileData, isLoading: profileLoading } = useGetProfileQuery();
+  const currentUserId = profileData?._id;
 
-  const contacts: Contact[] = [
-    {
-      id: "jane-doe",
-      name: "Jane Doe",
-      avatar:
-        "https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=40&h=40&fit=crop&crop=face",
-      lastMessage: "Hi, I want make enquiries about yo...",
-      time: "12:55 am",
-      status: "online",
-      isNew: true,
-    },
-    {
-      id: "janet-adebayo",
-      name: "Janet Adebayo",
-      avatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face",
-      lastMessage: "Hi, I want make enquiries about yo...",
-      time: "12:55 am",
-      status: "offline",
-      isNew: true,
-    },
-    {
-      id: "kunle-adekunle",
-      name: "Kunle Adekunle",
-      avatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face",
-      lastMessage: "Hi, I want make enquiries about yo...",
-      time: "12:55 am",
-      status: "offline",
-      isNew: true,
-    },
-    {
-      id: "jane-doe-2",
-      name: "Jane Doe",
-      avatar:
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=40&h=40&fit=crop&crop=face",
-      lastMessage: "Hi, I want make enquiries about yo...",
-      time: "12:55 am",
-      status: "offline",
-      unreadCount: 2,
-    },
-    {
-      id: "janet-adebayo-2",
-      name: "Janet Adebayo",
-      avatar:
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=40&h=40&fit=crop&crop=face",
-      lastMessage: "Hi, I want make enquiries about yo...",
-      time: "12:55 am",
-      status: "offline",
-    },
-    {
-      id: "kunle-adekunle-2",
-      name: "Kunle Adekunle",
-      avatar:
-        "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=40&h=40&fit=crop&crop=face",
-      lastMessage: "Hi, I want make enquiries about yo...",
-      time: "12:55 am",
-      status: "offline",
-    },
-  ];
+  // ── RTK Hooks ──
+  const [markSeen] = useMarkSeenMutation();
 
-  const messages: Message[] = [
-    {
-      id: "1",
-      sender: "contact",
-      content: "Hello, I want to make enquiries about your product",
-      time: "12:55 am",
-      type: "text",
-    },
-    {
-      id: "2",
-      sender: "contact",
-      content: "",
-      time: "12:55 am",
-      type: "product",
-      productInfo: {
-        name: "iPhone 13",
-        price: "$730,000.00",
-        stock: 12,
-        image:
-          "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=60&h=60&fit=crop",
-      },
-    },
-    {
-      id: "3",
-      sender: "user",
-      content: "Hello Janet, thank you for reaching out",
-      time: "12:57 am",
-      type: "text",
-    },
-    {
-      id: "4",
-      sender: "user",
-      content: "What do you need to know?",
-      time: "12:57 am",
-      type: "text",
-    },
-    {
-      id: "5",
-      sender: "contact",
-      content:
-        "I want to know if the price is negotiable, I need about 2 Units",
-      time: "12:55 am",
-      type: "text",
-    },
-    {
-      id: "6",
-      sender: "user",
-      content: "What do you need to know?",
-      time: "12:57 am",
-      type: "text",
-    },
-  ];
+  const [deleteMessageMutation] = useDeleteMessageMutation();
+  const { data: users } = useGetAllUsersQuery();
 
-  const filteredContacts = contacts.filter((contact) =>
-    contact.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const { data: chatData } = useGetChatQuery(selectedContact, {
+    skip: !selectedContact || !currentUserId,
+  });
+  const [sendMessage] = useSendMessageMutation();
 
-  const selectedContactInfo = contacts.find(
-    (contact) => contact.id === selectedContact
-  );
+  // ── Build contacts from users ──
+useEffect(() => {
+  if (!users || !currentUserId) return;
 
-  const handleSendMessage = () => {
-    if (messageInput.trim()) {
-      // Here you would typically add the message to the messages array
-      console.log("Sending message:", messageInput);
+  const formatted = users.map((user) => ({
+    id: user._id,
+    name: user.name,
+    avatar: user.avatar || "",
+    lastMessage: "",
+    time: "",
+    status: "offline" as const,
+  }));
+
+  // 🔥 current user কে top এ আনো
+  const sorted = formatted.sort((a, b) => {
+    if (a.id === currentUserId) return -1;
+    if (b.id === currentUserId) return 1;
+    return 0;
+  });
+
+  setContacts(sorted);
+}, [users, currentUserId]);
+
+  // ─── Format chat data to messages ──
+  useEffect(() => {
+    if (!chatData || !currentUserId) return;
+
+    const formattedMessages = chatData.map((msg: any) => ({
+      id: msg._id,
+      sender:
+        msg.sender._id === currentUserId
+          ? ("user" as const)
+          : ("contact" as const),
+      content: msg.content,
+      time: new Date(msg.createdAt).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      type: "text" as const,
+    }));
+
+    setMessages(formattedMessages);
+  }, [chatData, currentUserId]);
+
+  // ── Socket: connect & announce online ──
+  useEffect(() => {
+    if (profileLoading || !currentUserId) return;
+    if (!socket.connected) socket.connect();
+    socket.emit("user_online", currentUserId);
+  }, [currentUserId, profileLoading]);
+
+  // ── Socket: online/offline status ──
+  useEffect(() => {
+    const handleStatus = ({ userId, status }: any) => {
+      setContacts((prev) =>
+        prev.map((c) => (c.id === userId ? { ...c, status } : c)),
+      );
+    };
+    socket.on("update_user_status", handleStatus);
+    return () => {
+      socket.off("update_user_status", handleStatus);
+    };
+  }, []);
+
+  // ── Load messages from RTK ──
+  useEffect(() => {
+    socket.on("receive_message", (msg) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: msg._id,
+          sender: msg.sender._id === currentUserId ? "user" : "contact",
+          content: msg.content,
+          time: new Date(msg.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          type: "text",
+        },
+      ]);
+    });
+
+    return () => {
+      socket.off("receive_message");
+    };
+  }, [currentUserId]);
+
+  // ── Mark seen ──
+  useEffect(() => {
+    if (selectedContact && currentUserId) {
+      markSeen(selectedContact).unwrap().catch(console.error);
+    }
+  }, [selectedContact, currentUserId, markSeen]);
+
+  // ── Socket: join room ──
+  useEffect(() => {
+    if (!selectedContact || !currentUserId) return;
+    socket.emit("join_room", selectedContact);
+  }, [selectedContact, currentUserId]);
+
+  // ── Socket: receive message ──
+  useEffect(() => {
+    const handleReceiveMessage = (data: any) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === data._id)) return prev;
+        return [
+          ...prev,
+          {
+            id: data._id,
+            sender: data.sender === currentUserId ? "user" : "contact",
+            content: data.content,
+            time: new Date(data.createdAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            type: "text",
+          },
+        ];
+      });
+    };
+    socket.on("receive_message", handleReceiveMessage);
+    return () => {
+      socket.off("receive_message", handleReceiveMessage);
+    };
+  }, [currentUserId]);
+
+  // ── Send message ──
+  const handleSendMessage = async () => {
+    if (!messageInput.trim() || !selectedContact || !currentUserId) return;
+
+    const messageData = {
+      receiverId: selectedContact,
+      content: messageInput.trim(),
+    };
+
+    try {
+      // ✅ 1. API call (database save)
+      const res = (await sendMessage(messageData).unwrap()) as any;
+
+      // ✅ 2. socket emit (real-time)
+      socket.emit("send_message", {
+        room: selectedContact,
+        ...res, // backend থেকে আসা message
+      });
+
+      // ✅ 3. UI instant update (optional but smooth UX)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: res._id,
+          sender: "user",
+          content: res.content,
+          time: new Date(res.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          type: "text",
+        },
+      ]);
+
       setMessageInput("");
+    } catch (error) {
+      console.error("Send message error:", error);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+  // ── Delete message ──
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      await deleteMessageMutation(messageId).unwrap();
+      setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+      socket.emit("delete_message", { messageId, room: selectedContact });
+    } catch (error) {
+      console.error("❌ Failed to delete message:", error);
     }
   };
 
+  // ── Auto scroll ──
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const filteredContacts = contacts.filter((c) =>
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const selectedContactData = contacts.find((c) => c.id === selectedContact);
+
+  // ── Loading / Auth guards ──
+  if (profileLoading) {
+    return (
+      <div
+        className="h-screen flex items-center justify-center text-sm text-gray-400"
+        style={{ background: PINK_BG, fontFamily: "'DM Sans', sans-serif" }}
+      >
+        Loading your profile...
+      </div>
+    );
+  }
+
+  if (!currentUserId) {
+    return (
+      <div
+        className="h-screen flex items-center justify-center text-sm text-red-500"
+        style={{ background: PINK_BG, fontFamily: "'DM Sans', sans-serif" }}
+      >
+        User not found. Please login again.
+      </div>
+    );
+  }
+
+  // ── Render ──
   return (
-    <div className=" bg-[#FDF1F7]">
-      <div className="mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-lg md:text-2xl font-bold text-[#505050]">
-            Conversations
-          </h1>
-          <div className="flex items-center mt-1">
-            <span className="text-[#A8537B] text-sm font-medium">
-              Dashboard
-            </span>
-            <span className="mx-2 text-[#919191]">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 18 18"
-                fill="none"
-              >
-                <path
-                  fill-rule="evenodd"
-                  clip-rule="evenodd"
-                  d="M6.59467 3.96967C6.30178 4.26256 6.30178 4.73744 6.59467 5.03033L10.5643 9L6.59467 12.9697C6.30178 13.2626 6.30178 13.7374 6.59467 14.0303C6.88756 14.3232 7.36244 14.3232 7.65533 14.0303L12.4205 9.26516C12.5669 9.11872 12.5669 8.88128 12.4205 8.73484L7.65533 3.96967C7.36244 3.67678 6.88756 3.67678 6.59467 3.96967Z"
-                  fill="#B6B7BC"
-                />
-              </svg>
-            </span>
-            <span className="text-[#919191] text-sm font-medium">
-              Conversations
-            </span>
+    <div
+      className="flex h-screen overflow-hidden"
+      style={{ background: PINK_BG, fontFamily: "'DM Sans', sans-serif" }}
+    >
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap');`}</style>
+
+      {/* ══ SIDEBAR ══ */}
+      <div
+        className="w-80 flex flex-col flex-shrink-0 border-r"
+        style={{ background: "#fff", borderColor: PINK_BORDER }}
+      >
+        {/* Sidebar Header */}
+        <div
+          className="px-5 py-4 border-b"
+          style={{ borderColor: PINK_BORDER }}
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <MessageSquare size={20} style={{ color: PINK_ACCENT }} />
+            <h2 className="font-semibold text-gray-800 text-base">Messages</h2>
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300"
+            />
+            <input
+              type="text"
+              placeholder="Search contacts..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-1 transition"
+              style={{
+                borderColor: PINK_BORDER,
+                background: PINK_BG,
+                color: "#374151",
+              }}
+              onFocus={(e) => (e.target.style.borderColor = PINK_ACCENT)}
+              onBlur={(e) => (e.target.style.borderColor = PINK_BORDER)}
+            />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 ">
-          {/* Contacts Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm h-full flex flex-col">
-              {/* Contacts Header */}
-              <div className="p-4 border-b border-gray-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-semibold text-[#505050]">
-                    Contacts
-                  </h2>
-                  <span className="text-base font-semibold text-[#505050]">
-                    34
-                  </span>
-                </div>
-                <div className="relative">
-                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Search for anything..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pr-10 pl-4 py-2 border border-[#E2E3E8] rounded-[38px] focus:outline-none focus:ring-1 focus:ring-purple-400 focus:border-transparent"
-                  />
+        {/* Contact List */}
+        <div className="flex-1 overflow-y-auto">
+          {filteredContacts.length === 0 && (
+            <p className="text-center text-xs text-gray-400 mt-8">
+              No contacts found
+            </p>
+          )}
+
+          {filteredContacts.map((contact) => {
+            const isSelected = selectedContact === contact.id;
+            return (
+              <div
+                key={contact.id}
+                onClick={() => {
+                  setSelectedContact(contact.id);
+                }}
+                className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-l-2"
+                style={{
+                  background: isSelected ? PINK_LIGHT : "transparent",
+                  borderLeftColor: isSelected ? PINK_ACCENT : "transparent",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected)
+                    (e.currentTarget as HTMLDivElement).style.background =
+                      "#fdf8fd";
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected)
+                    (e.currentTarget as HTMLDivElement).style.background =
+                      "transparent";
+                }}
+              >
+                <Avatar
+                  name={contact.name}
+                  avatar={contact.avatar}
+                  size={10}
+                  online={contact.status === "online"}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">
+                    {contact.name}
+                  </p>
+                  <p className="text-xs text-gray-400 truncate">
+                    {contact.status === "online" ? "Active now" : "Offline"}
+                  </p>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      </div>
 
-              {/* Contacts List */}
-              <div className="flex-1  overflow-y-auto">
-                {filteredContacts.map((contact) => (
-                  <div
-                    key={contact.id}
-                    onClick={() => setSelectedContact(contact.id)}
-                    className={`p-4 border-b border-gray-100 cursor-pointer ${
-                      selectedContact === contact.id
-                        ? "bg-[#FDF1F7] border-r-2 border-r-[#FDF1F7]"
-                        : ""
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="relative">
-                        <img
-                          src={contact.avatar}
-                          alt={contact.name}
-                          className="w-12 h-12 text-base rounded-[8px] object-cover"
-                        />
-                        {contact.status === "online" && (
-                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-base font-semibold text-[#45464E] truncate">
-                            {contact.name}
-                          </p>
-                          <div className="flex items-center space-x-2">
-                            {contact.isNew && (
-                              <span className="px-3 py-1 bg-[#FDF1F7] text-sm text-[#1F1F1F] font-medium">
-                                New
-                              </span>
-                            )}
-                            {contact.unreadCount && (
-                              <span className="w-5 h-5 bg-[#FDF1F7] text-[#1C1D22] text-sm rounded-full flex items-center justify-center">
-                                {contact.unreadCount}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between mt-1">
-                          <p className="text-sm text-[#919191] truncate">
-                            {contact.lastMessage}
-                          </p>
-                          <span className="text-[8px] text-[#8B8D97]">
-                            {contact.time}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+      {/* ══ CHAT AREA ══ */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* No contact selected */}
+        {!selectedContactData && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center"
+              style={{ background: PINK_LIGHT }}
+            >
+              <MessageSquare size={28} style={{ color: PINK_ACCENT }} />
+            </div>
+            <p className="text-sm text-gray-400 font-medium">
+              Select a contact to start chatting
+            </p>
+          </div>
+        )}
+
+        {selectedContactData && (
+          <>
+            {/* Chat Header */}
+            <div
+              className="px-5 py-3 border-b flex items-center gap-3 flex-shrink-0"
+              style={{ background: "#fff", borderColor: PINK_BORDER }}
+            >
+              <Avatar
+                name={selectedContactData.name}
+                avatar={selectedContactData.avatar}
+                size={10}
+                online={selectedContactData.status === "online"}
+              />
+              <div>
+                <h3 className="text-sm font-semibold text-gray-800">
+                  {selectedContactData.name}
+                </h3>
+                <p className="text-xs text-gray-400">
+                  {selectedContactData.status === "online"
+                    ? "Active now"
+                    : "Offline"}
+                </p>
               </div>
             </div>
-          </div>
 
-          {/* Chat Area */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm h-full flex flex-col">
-              {/* Chat Header */}
-              {selectedContactInfo && (
-                <div className="p-4 border-b border-[#F1F3F9]">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="relative">
-                        <img
-                          src={selectedContactInfo.avatar}
-                          alt={selectedContactInfo.name}
-                          className="w-10 h-10 rounded-[8px] object-cover"
-                        />
-                        {selectedContactInfo.status === "online" && (
-                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                        )}
-                      </div>
-                      <div className="">
-                        <p className="text-base font-medium text-[#45464E]">
-                          {selectedContactInfo.name}
-                        </p>
-                        <p className="text-sm text-[#B6B7BC]">
-                          {selectedContactInfo.status === "online"
-                            ? "Online"
-                            : "Offline"}{" "}
-                          <span className="text-[#8B8D97] text-sm">
-                            {selectedContactInfo.time}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex space-x-4">
-                      <div>
-                        <div className="text-sm text-[#1F1F1F] rounded-[8px] px-2 bg-[#FEF5EA]">
-                          New Customer
-                        </div>
-                        <div></div>
-                      </div>
-                      <div className="space-y-3">
-                        <button className="text-sm text-[#A8537B] ">
-                          View Profile
-                        </button>
-                        <div className="flex items-center space-x-1">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="21"
-                            viewBox="0 0 20 21"
-                            fill="none"
-                          >
-                            <path
-                              fill-rule="evenodd"
-                              clip-rule="evenodd"
-                              d="M13.7615 18.4166H6.80495C4.24965 18.4166 2.28931 17.4936 2.84614 13.7789L3.4945 8.74457C3.83775 6.89102 5.02005 6.18164 6.05743 6.18164H14.5395C15.5921 6.18164 16.7058 6.94442 17.1024 8.74457L17.7508 13.7789C18.2237 17.0741 16.3168 18.4166 13.7615 18.4166Z"
-                              stroke="#53545C"
-                              stroke-width="1.5"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                            />
-                            <path
-                              d="M13.8758 5.99877C13.8758 4.01038 12.2639 2.39847 10.2755 2.39847V2.39847C9.31797 2.39441 8.3983 2.77194 7.71981 3.44757C7.04131 4.12319 6.6599 5.04127 6.65991 5.99877H6.65991"
-                              stroke="#53545C"
-                              stroke-width="1.5"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                            />
-                            <path
-                              d="M12.7469 9.75248H12.7088"
-                              stroke="#53545C"
-                              stroke-width="1.5"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                            />
-                            <path
-                              d="M7.88801 9.75248H7.84987"
-                              stroke="#53545C"
-                              stroke-width="1.5"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                            />
-                          </svg>
-                          <span className="text-sm text-center text-[#A6A8B1]">
-                            0 Orders
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+            {/* Messages */}
+            <div
+              className="flex-1 overflow-y-auto px-5 py-4 space-y-3"
+              style={{ background: PINK_BG }}
+            >
+              {messages.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400">
+                  <MessageSquare size={32} style={{ color: "#e8d0e8" }} />
+                  <p className="text-xs">No messages yet. Say hello! 👋</p>
                 </div>
               )}
 
-              {/* Messages Area */}
-              <div className="flex-1 p-4 overflow-y-auto space-y-4">
-                <div className="text-center">
-                  <span className="text-sm text-[#1C1D22] border border-[#E2E3E8] px-3 py-1 rounded-[8px]">
-                    12 August 2022
-                  </span>
-                </div>
-
-                {messages.map((message) => (
+              {messages.map((msg) => {
+                const isUser = msg.sender === "user";
+                return (
                   <div
-                    key={message.id}
-                    className={`flex ${
-                      message.sender === "user"
-                        ? "justify-end"
-                        : "justify-start"
+                    key={msg.id}
+                    className={`group flex items-end gap-2 ${
+                      isUser ? "justify-end" : "justify-start"
                     }`}
                   >
-                    <div
-                      className={`max-w-xs lg:max-w-md ${
-                        message.sender === "user"
-                          ? "bg-[#FDF1F7] text-[#1F1F1F] text-base"
-                          : "bg-[#C8A8E9] text-[#FFF]"
-                      } rounded-lg p-3`}
-                    >
-                      {message.type === "product" && message.productInfo ? (
-                        <div className="bg-white rounded-lg p-3 text-gray-900">
-                          <div className="flex items-center space-x-3">
-                            <img
-                              src={message.productInfo.image}
-                              alt={message.productInfo.name}
-                              className="w-12 h-12 rounded-lg object-cover"
-                            />
-                            <div className="flex-1">
-                              <p className="font-medium bg-[#FDF1F7">
-                                {message.productInfo.name}
-                              </p>
-                              <p className="text-sm text-[#8B8D97]">
-                                {message.productInfo.price}
-                              </p>
-                              <p className="text-xs text-green-600">
-                                {message.productInfo.stock} In Stock
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-sm">{message.content}</p>
+                    {/* Contact avatar on left */}
+                    {!isUser && (
+                      <Avatar
+                        name={selectedContactData.name}
+                        avatar={selectedContactData.avatar}
+                        size={7}
+                      />
+                    )}
+
+                    <div className="relative max-w-[65%]">
+                      {/* Delete button */}
+                      {isUser && msg.id && (
+                        <button
+                          onClick={() => handleDeleteMessage(msg.id!)}
+                          className="absolute -top-2 -left-2 w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10"
+                          style={{ background: "#fecaca" }}
+                          title="Delete"
+                        >
+                          <Trash2 size={12} color="#dc2626" />
+                        </button>
                       )}
-                      <p
-                        className={`text-xs mt-1 ${
-                          message.sender === "user"
-                            ? "text-[#919191]"
-                            : "text-purple-200"
-                        }`}
+
+                      {/* Bubble */}
+                      <div
+                        className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
+                        style={
+                          isUser
+                            ? {
+                                background: PINK_ACCENT,
+                                color: "#fff",
+                                borderBottomRightRadius: 4,
+                              }
+                            : {
+                                background: "#fff",
+                                color: "#374151",
+                                border: `1px solid ${PINK_BORDER}`,
+                                borderBottomLeftRadius: 4,
+                              }
+                        }
                       >
-                        {message.time}
-                      </p>
+                        <p>{msg.content}</p>
+                        <span
+                          className="block text-right mt-1"
+                          style={{
+                            fontSize: 10,
+                            opacity: 0.65,
+                            color: isUser ? "#fff" : "#9ca3af",
+                          }}
+                        >
+                          {msg.time}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                ))}
+                );
+              })}
 
-                <div className="text-center">
-                  <span className="text-sm text-[#1C1D22] border border-[#E2E3E8] px-3 py-1 rounded-[8px]">
-                    Today
-                  </span>
-                </div>
-              </div>
-
-              {/* Message Input */}
-              <div className="p-4 border-t border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <button className="p-2 text-gray-400 hover:text-gray-600">
-                    <Paperclip className="w-5 h-5" />
-                  </button>
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      placeholder="Your message"
-                      value={messageInput}
-                      onChange={(e) => setMessageInput(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  <button
-                    onClick={handleSendMessage}
-                    className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
+              <div ref={messagesEndRef} />
             </div>
-          </div>
-        </div>
+
+            {/* Input Bar */}
+            <div
+              className="px-5 py-3 border-t flex items-center gap-3 flex-shrink-0"
+              style={{ background: "#fff", borderColor: PINK_BORDER }}
+            >
+              <input
+                type="text"
+                className="flex-1 px-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-1 transition"
+                style={{
+                  borderColor: PINK_BORDER,
+                  background: PINK_BG,
+                  color: "#374151",
+                }}
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                placeholder="Type your message..."
+                onFocus={(e) => (e.target.style.borderColor = PINK_ACCENT)}
+                onBlur={(e) => (e.target.style.borderColor = PINK_BORDER)}
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={!messageInput.trim()}
+                className="w-10 h-10 flex-shrink-0 rounded-xl flex items-center justify-center transition-opacity"
+                style={{
+                  background: messageInput.trim() ? PINK_ACCENT : "#e5e7eb",
+                  cursor: messageInput.trim() ? "pointer" : "not-allowed",
+                }}
+              >
+                <Send
+                  size={17}
+                  color={messageInput.trim() ? "#fff" : "#9ca3af"}
+                />
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

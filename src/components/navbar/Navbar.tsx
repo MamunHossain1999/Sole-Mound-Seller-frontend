@@ -1,265 +1,250 @@
-import { useState } from "react";
-import mail from "@/assets/navbarIcon/mail.svg";
-
-import {
-  Search,
-  Menu,
-  Mail,
-  ShoppingCart,
-  DollarSign,
-  Bell,
-  User,
-} from "lucide-react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useMemo, useState } from "react";
+import { Search, Menu, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { FaRegBell } from "react-icons/fa";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useGetProfileQuery } from "@/redux/api/userApi";
+import { useGetProductsQuery } from "@/redux/api/productApi";
+import {
+  useGetUnreadByUserQuery,
+  useGetUnreadCountQuery,
+} from "@/redux/api/chatApi"; // শুধু এটাই রাখছি এখন
+import { socket } from "../socket/socket";
+import { useDebounce } from "../searchHook/useDebounce";
+import { NavLink, useNavigate } from "react-router-dom";
 
 interface NavbarProps {
   onMenuClick?: () => void;
 }
 
+interface UserProfile {
+  _id?: string;
+  name?: string;
+  avatar?: string;
+  email?: string;
+  role?: string;
+}
+
+const getProfile = (data: any): UserProfile | undefined => {
+  if (!data) return undefined;
+  return data.data || data;
+};
+
 const Navbar = ({ onMenuClick }: NavbarProps) => {
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const { data: profileData, isLoading } = useGetProfileQuery();
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const notifications = [
-    {
-      id: 1,
-      title: "New Order Received",
-      message: "Order #1234 from John Doe",
-      time: "2 min ago",
-      type: "order",
-    },
-    {
-      id: 2,
-      title: "Payment Completed",
-      message: "Payment of $299.99 received",
-      time: "5 min ago",
-      type: "payment",
-    },
-  ];
+  const navigate = useNavigate();
 
-  type Message = {
-    id: string;
-    sender: string;
-    message: string;
-    time: string;
-    avatarUrl?: string;
-  };
+  // ==================== QUERIES ====================
+  const { data: productsData } = useGetProductsQuery();
+  const profile = getProfile(profileData);
+  const currentUserId = profile?._id;
 
-  const messages: Message[] = [
-    {
-      id: "1",
-      sender: "John Doe",
-      message: "Hey! Are you available for the meeting tomorrow?",
-      time: "2 mins ago",
-    },
-    {
-      id: "2",
-      sender: "Jane Smith",
-      message: "Don't forget to check the documents I sent.",
-      time: "1 hour ago",
-    },
-  ];
+  const { data: unreadCountData, refetch: refetchUnread } =
+    useGetUnreadCountQuery(undefined, {
+      skip: !productsData, // user না থাকলে call হবে না
+    });
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case "order":
-        return <ShoppingCart className="w-4 h-4 text-blue-500" />;
-      case "payment":
-        return <DollarSign className="w-4 h-4 text-green-500" />;
-      case "alert":
-        return <Bell className="w-4 h-4 text-orange-500" />;
-      case "user":
-        return <User className="w-4 h-4 text-purple-500" />;
-      default:
-        return <Bell className="w-4 h-4 text-gray-500" />;
-    }
-  };
+  const unreadCount = unreadCountData?.count ?? 0;
+
+  const { data: unreadUsers } = useGetUnreadByUserQuery(undefined, {
+    skip: !productsData,
+  });
+
+  const unreadUsersCount = unreadUsers?.count ?? 0;
+
+  // console.log(unreadUsers)
+  // console.log(unreadCount)
+
+  // ==================== SOCKET REAL-TIME ====================
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const handleNewMessage = () => {
+      refetchUnread();
+    };
+
+    socket.on("new_message_notification", handleNewMessage);
+    // যদি backend "receive_message" ইভেন্টও পাঠায় তাহলে:
+    // socket.on("receive_message", handleNewMessage);
+
+    return () => {
+      socket.off("new_message_notification", handleNewMessage);
+    };
+  }, [currentUserId, refetchUnread]);
+
+  // ==================== SEARCH ====================
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
+  const products = useMemo(
+    () =>
+      Array.isArray(productsData)
+        ? productsData
+        : (productsData as any)?.data || [],
+    [productsData],
+  );
+
+  const filteredProducts = useMemo(() => {
+    if (!debouncedSearch) return [];
+
+    const term = debouncedSearch.toLowerCase();
+    return products.filter((p: any) => p.name?.toLowerCase().includes(term));
+  }, [products, debouncedSearch]);
+
+  if (isLoading) {
+    return (
+      <header className="w-full sticky top-0 z-50 bg-white shadow-sm">
+        <div className="mx-4 sm:mx-6 lg:mx-8 py-3">
+          <div className="flex items-center justify-between">
+            <div className="h-9 w-9 bg-gray-200 animate-pulse rounded-[12px]" />
+            <div className="h-9 w-80 bg-gray-200 animate-pulse rounded-[12px]" />
+            <div className="h-9 w-28 bg-gray-200 animate-pulse rounded-[12px]" />
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  const displayName = profile?.name?.trim() || "User";
+  const nameInitial = displayName.charAt(0).toUpperCase();
 
   return (
-    <header className="w-full mx-auto sticky top-0 z-50 ">
-      <div className="bg-white mx-6 rounded-lg px-2 sm:px-6 lg:px-8 ">
-        <div className="flex items-center justify-between h-24 gap-2 ">
-          {/* Left: Mobile Menu + Logo */}
-          <div className="flex items-center ">
-            <div className="md:hidden">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onMenuClick}
-                className="p-2 !bg-purple-200"
-              >
-                <Menu className="w-5 h-5 " />
-              </Button>
-            </div>
+    <header className="w-full sticky top-0 z-50 bg-white shadow-sm">
+      <div className="mx-4 sm:mx-6 lg:mx-8 py-3">
+        <div className="flex items-center justify-between gap-2">
+          {/* Mobile Menu */}
+          <div className="md:hidden">
+            <button
+              onClick={onMenuClick}
+              className="w-9 h-9 rounded-[12px] bg-[#F1DAFC] flex items-center justify-center border border-[#B6B7BC]"
+            >
+              <Menu className="w-6 h-6 text-[#505050]" />
+            </button>
           </div>
 
-          {/* Center: Search */}
-          <div className="flex-1 flex pr-2 sm:pr-4">
-            <div className="relative w-full max-w-md sm:max-w-xl">
-              <Input
-                placeholder="Search products"
-                className={`pl-4 pr-10 md:py-5 w-full border border-[#B6B7BC] text-[#949494] font-medium rounded-[12px] transition-all duration-200 text-sm sm:text-base ${
-                  isSearchFocused
-                    ? "!border-purple-500 ring-1 ring-purple-400 "
-                    : "hover:border-purple-400 focus:outline-none"
-                }`}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-              />
-              {/* Icon aligned right inside input */}
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-[#949494] w-4 h-4" />
-            </div>
+          {/* Search Bar */}
+          <div className="relative w-full max-w-md sm:max-w-xl">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              type="text"
+              placeholder="Search in Daraz..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2.5 w-full border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-orange-500"
+            />
+
+            {/* Search Results Dropdown */}
+            {debouncedSearch && (
+              <div className="absolute top-full left-0 w-full bg-white border mt-1 rounded-md shadow-lg z-50 max-h-96 overflow-auto">
+                {filteredProducts.length > 0 ? (
+                  filteredProducts.slice(0, 8).map((product: any) => (
+                    <div
+                      key={product._id}
+                      onClick={() => {
+                        navigate(`/product-details/${product._id}`);
+                        setSearchTerm("");
+                      }}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-gray-100 cursor-pointer transition"
+                    >
+                      <img
+                        src={product.images?.[0] || "/placeholder.jpg"}
+                        alt={product.name}
+                        className="w-10 h-10 object-cover rounded"
+                      />
+                      <p className="text-sm text-gray-800 line-clamp-1">
+                        {product.name}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="p-3 text-sm text-gray-500 text-center">
+                    No product found
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right Section */}
-          <div className=" hidden lg:block">
-            <div className="flex items-center gap-2">
-              {/* Messages */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    className="w-9 h-9 relative rounded-[12px] !bg-[#F1DAFC] flex items-center justify-center"
-                    aria-label="Messages"
-                  >
-                    <Mail className="w-6 h-6 object-cover text-[#505050]" />
-                    {messages.length > 0 && (
-                      <div className="absolute -top-2 -right-1 bg-[#FF1C1C] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
-                        {messages.length}
-                      </div>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-              </DropdownMenu>
-
-              {/* Notifications */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    className="relative rounded-[12px] !bg-[#F1DAFC] border border-[#B6B7BC] flex items-center justify-center w-9 h-9"
-                    aria-label="Notifications"
-                  >
-                    <FaRegBell className="w-6 h-6 object-cover text-[#505050]" />
-                    {notifications.length > 0 && (
-                      <div className="absolute -top-2 -right-1 bg-[#FF1C1C] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
-                        {notifications.length}
-                      </div>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-
-                <DropdownMenuContent className="w-72 mt-2">
-                  <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {notifications.length > 0 ? (
-                    notifications.map((item) => (
-                      <DropdownMenuItem
-                        key={item.id}
-                        className="flex items-center gap-3"
-                      >
-                        {getNotificationIcon(item.type)}
-                        <span className="text-sm text-gray-700">
-                          {item.message}
-                        </span>
-                      </DropdownMenuItem>
-                    ))
-                  ) : (
-                    <DropdownMenuItem className="text-gray-400 text-sm">
-                      No notifications
-                    </DropdownMenuItem>
+          <div className="flex items-center gap-2">
+            {/* Messages (Mail) Button */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="w-9 h-9 relative rounded-[12px] bg-[#F1DAFC]">
+                  <Mail className="w-6 h-6 text-[#505050]" />
+                  {unreadUsersCount > 0 && (
+                    <span className="absolute -top-2 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-white font-medium">
+                      {unreadUsersCount > 99 ? "99+" : unreadUsersCount}
+                    </span>
                   )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </Button>
+              </DropdownMenuTrigger>
+            </DropdownMenu>
 
-              {/* Profile */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button className="flex items-center !py-3 !bg-white p-2 border-none hover:border-none shadow-none hover:shadow-none">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src="/api/placeholder/32/32" />
-                      {/* img set hobe vendor er logo */}
-                      <AvatarFallback className="bg-purple-300 text-white text-sm">
-                        GH
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="hidden sm:block text-left ml-2">
-                      <p className="text-base font-semibold text-[#505050]">
-                        Guy Hawkins
-                      </p>
-                      <p className="text-sm font-medium text-[#919191]">
-                        Super Admin
-                      </p>
-                    </div>
-                  </Button>
-                </DropdownMenuTrigger>
-              </DropdownMenu>
-            </div>
-          </div>
+            {/* Notifications Button */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="w-9 h-9 relative rounded-[12px] bg-[#F1DAFC] border border-[#B6B7BC]">
+                  <FaRegBell className="w-6 h-6 text-[#505050]" />
 
-          {/* Mobile Menu Icon */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="default"
-                className="lg:hidden p-2 rounded-full !bg-purple-200 cursor-pointer"
-              >
-                <Menu className="w-5 h-5 text-gray-600" />
-              </Button>
-            </DropdownMenuTrigger>
+                  {/* 🔥 Notification Badge */}
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full">
+                      {unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end" className="w-64 mt-4 ">
-              <DropdownMenuLabel className="text-sm font-semibold text-gray-700">
-                Menu
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-
-              {/* Messages */}
-              <DropdownMenuItem className="flex items-center gap-2">
-                <img src={mail} alt="Mail" />
-                Messages
-                <Badge className="ml-auto bg-[#FF1C1C] text-[#F1DAFC] text-xs px-2 rounded-full">
-                  {messages.length}
-                </Badge>
-              </DropdownMenuItem>
-
-              {/* Notifications */}
-              <DropdownMenuItem className="flex items-center gap-2">
-                <FaRegBell className="w-6 h-6 object-cover text-[#505050]" />
-                Notifications
-                <Badge className="ml-auto bg-[#FF1C1C] text-[#F1DAFC] text-xs px-2 rounded-full">
-                  {notifications.length}
-                </Badge>
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-
-              {/* Profile Section */}
-              <DropdownMenuLabel>
-                <div className="flex items-center gap-2">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src="/api/placeholder/32/32" />
-                    <AvatarFallback className="bg-purple-600 text-white text-sm">
-                      GH
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">Guy Hawkins</p>
-                    <p className="text-xs text-gray-600">guy@example.com</p>
-                  </div>
+              <DropdownMenuContent align="end" className="w-80">
+                <div className="p-3 border-b font-semibold text-sm">
+                  Notifications
                 </div>
-              </DropdownMenuLabel>
-            </DropdownMenuContent>
-          </DropdownMenu>
+
+                {unreadCount > 0 ? (
+                  <div className="p-3 text-sm text-gray-700">
+                    You have <b>{unreadCount}</b> unread messages
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-gray-500">
+                    No notifications
+                  </div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Profile */}
+            <NavLink
+              to="/profile-settings"
+              className="flex items-center gap-2 hover:bg-gray-50 px-3 py-1.5 rounded-xl transition-colors"
+            >
+              <div className="text-right">
+                <p className="text-sm font-semibold text-[#1F1F1F]">
+                  {displayName}
+                </p>
+                {profile?.role && (
+                  <p className="text-[10px] text-gray-500 -mt-0.5 capitalize">
+                    {profile.role}
+                  </p>
+                )}
+              </div>
+
+              <Avatar className="w-9 h-9 border border-[#E5E7EB]">
+                <AvatarImage src={profile?.avatar} alt={displayName} />
+                <AvatarFallback className="bg-[#C8A8E9] text-white font-medium">
+                  {nameInitial}
+                </AvatarFallback>
+              </Avatar>
+            </NavLink>
+          </div>
         </div>
       </div>
     </header>
