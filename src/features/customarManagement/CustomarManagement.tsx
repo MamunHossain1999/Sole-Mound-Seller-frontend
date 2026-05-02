@@ -1,17 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from "react";
-import { Plus, Search, ChevronDown } from "lucide-react";
-import { useNavigate } from "react-router";
-
-interface Customer {
-  id: string;
-  name: string;
-  phone: string;
-  image: string;
-  status: "Activated" | "Approved";
-  totalBuy: number;
-  method: "Mastercard" | "Visa";
-  dueDate: string;
-}
+import { Search, ChevronDown } from "lucide-react";
+import { Link } from "react-router-dom";
+import {
+  useDeleteUserMutation,
+  useGetAllUsersQuery,
+} from "@/redux/api/userApi";
+import { useGetAllOrdersQuery } from "@/redux/api/orderApi";
+import { toast } from "react-toastify";
 
 interface StatsCard {
   title: string;
@@ -23,14 +19,98 @@ interface StatsCard {
 }
 
 const CustomarManagement: React.FC = () => {
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const navigate = useNavigate();
+
+  const { data: customers = [], isLoading, isError } = useGetAllUsersQuery();
+  const { data: orders = [] } = useGetAllOrdersQuery();
+  const [deleteUser] = useDeleteUserMutation();
+
+  console.log(orders);
+  // total buy
+  const getTotalBuy = (userId: string) => {
+    if (!orders) return 0;
+
+    return orders
+      .filter((order: any) => order.userId === userId)
+      .reduce((sum: number, order: any) => {
+        return sum + (order.totalAmount ?? order.summary?.subtotal ?? 0);
+      }, 0);
+  };
+
+  // payment method name
+  const getPaymentMethod = (userId: string) => {
+    const userOrders = orders?.filter((o: any) => o.userId === userId);
+
+    const lastOrder = userOrders?.[userOrders.length - 1];
+
+    return lastOrder?.paymentMethod ?? "N/A";
+  };
+
+  // card show
+  const formatPaymentMethod = (method: string) => {
+    switch (method) {
+      case "stripe":
+        return "💳 VisaCard";
+      case "cod":
+        return "💵 Cash on Delivery";
+      case "paypal":
+        return "🅿️ PayPal";
+      default:
+        return method;
+    }
+  };
+
+  // invoice show
+  const getInvoiceTotalAll = () => {
+    return (
+      orders?.reduce(
+        (sum: number, order: any) => sum + (order.summary?.subtotal ?? 0),
+        0,
+      ) || 0
+    );
+  };
+
+  // due date
+  const getDueDate = (userId: string) => {
+    const userOrders = orders?.filter((order: any) => order.userId === userId);
+
+    const lastOrder = userOrders?.[userOrders.length - 1];
+
+    return lastOrder?.date || "N/A";
+  };
+
+  // order stutas
+  const getUserStatus = (userId: string) => {
+    if (!orders || orders.length === 0) return "New";
+
+    const userOrders = orders.filter((order: any) => order.userId === userId);
+
+    if (userOrders.length === 0) return "New";
+
+    const sortedOrders = [...userOrders].sort(
+      (a: any, b: any) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+
+    const lastOrder = sortedOrders[0];
+
+    if (!lastOrder?.date) return "New";
+
+    const diffDays =
+      (Date.now() - new Date(lastOrder.date).getTime()) / (1000 * 60 * 60 * 24);
+
+    if (diffDays <= 7) return "Active";
+
+    return "Inactive";
+  };
 
   const statsCards: StatsCard[] = [
     {
       title: "All Customers",
-      value: "+22.63k",
+      value: customers?.length?.toString() || "0",
       change: "+34.4%",
       changeType: "positive",
       icon: (
@@ -74,7 +154,7 @@ const CustomarManagement: React.FC = () => {
     },
     {
       title: "Orders",
-      value: "+4.5k",
+      value: orders?.length?.toString() || "0",
       change: "+8.1%",
       changeType: "negative",
       icon: (
@@ -137,7 +217,7 @@ const CustomarManagement: React.FC = () => {
     },
     {
       title: "Invoice & Payment",
-      value: "$38,908.00",
+      value: `$${getInvoiceTotalAll()}`,
       change: "+43.9%",
       changeType: "positive",
       icon: (
@@ -163,111 +243,19 @@ const CustomarManagement: React.FC = () => {
     },
   ];
 
-  const customers: Customer[] = [
-    {
-      id: "1",
-      name: "Ashley Foster",
-      phone: "510 488 5343",
-      image:
-        "https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=40&h=40&fit=crop&crop=face",
-      status: "Activated",
-      totalBuy: 950,
-      method: "Mastercard",
-      dueDate: "29 Dec 2022",
-    },
-    {
-      id: "2",
-      name: "Ellie Parker",
-      phone: "681 710 8595",
-      image:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face",
-      status: "Activated",
-      totalBuy: 208,
-      method: "Visa",
-      dueDate: "24 Dec 2022",
-    },
-    {
-      id: "3",
-      name: "Eric Lawson",
-      phone: "548 248 4804",
-      image:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face",
-      status: "Activated",
-      totalBuy: 693,
-      method: "Mastercard",
-      dueDate: "12 Dec 2022",
-    },
-    {
-      id: "4",
-      name: "Colin Hunt",
-      phone: "539 633 9910",
-      image:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face",
-      status: "Activated",
-      totalBuy: 826,
-      method: "Visa",
-      dueDate: "21 Oct 2022",
-    },
-    {
-      id: "5",
-      name: "Georgia White",
-      phone: "476 257 0816",
-      image:
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=40&h=40&fit=crop&crop=face",
-      status: "Approved",
-      totalBuy: 343,
-      method: "Mastercard",
-      dueDate: "21 Oct 2022",
-    },
-    {
-      id: "6",
-      name: "Kate Richards",
-      phone: "058 142 4274",
-      image:
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=40&h=40&fit=crop&crop=face",
-      status: "Activated",
-      totalBuy: 306,
-      method: "Mastercard",
-      dueDate: "23 Oct 2022",
-    },
-    {
-      id: "7",
-      name: "Noah Ellis",
-      phone: "805 066 8867",
-      image:
-        "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=40&h=40&fit=crop&crop=face",
-      status: "Activated",
-      totalBuy: 549,
-      method: "Mastercard",
-      dueDate: "19 Sep 2022",
-    },
-    {
-      id: "8",
-      name: "Jackson Brooke",
-      phone: "606 784 2326",
-      image:
-        "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=40&h=40&fit=crop&crop=face",
-      status: "Activated",
-      totalBuy: 777,
-      method: "Mastercard",
-      dueDate: "19 Sep 2022",
-    },
-  ];
-
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Activated":
-        return "bg-[#D3F3DF] text-[#22C55E]";
-      case "Approved":
-        return "bg-blue-100 text-blue-700";
-      default:
-        return "bg-gray-100 text-gray-700";
+    const s = status?.toLowerCase();
+
+    if (s === "inactive") {
+      return "bg-red-100 text-red-600";
     }
+
+    return "bg-green-100 text-green-600"; // সব active
   };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedCustomers(customers.map((customer) => customer.id));
+      setSelectedCustomers(customers.map((customer) => customer._id));
     } else {
       setSelectedCustomers([]);
     }
@@ -278,20 +266,50 @@ const CustomarManagement: React.FC = () => {
       setSelectedCustomers([...selectedCustomers, id]);
     } else {
       setSelectedCustomers(
-        selectedCustomers.filter((customerId) => customerId !== id)
+        selectedCustomers.filter((customerId) => customerId !== id),
       );
     }
   };
 
+  // delete customer
+  const handleDeleteUser = async () => {
+    if (!selectedUserId) return;
+
+    try {
+      const res = await deleteUser(selectedUserId).unwrap();
+
+      toast.success("User deleted successfully");
+
+      setIsDeleteModalOpen(false);
+      setSelectedUserId(null);
+
+      console.log("Deleted:", res);
+    } catch (error) {
+      toast.error("Delete failed");
+      console.error(error);
+    }
+  };
+  const openDeleteModal = (id: string) => {
+    setSelectedUserId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  // checkbox select unselect
   const isAllSelected = selectedCustomers.length === customers.length;
   const isIndeterminate =
     selectedCustomers.length > 0 && selectedCustomers.length < customers.length;
 
-  const filteredCustomers = customers.filter(
-    (customer) =>
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.phone.includes(searchTerm)
-  );
+  const filteredCustomers = customers.filter((customer) => {
+    const name = customer?.name?.toLowerCase() || "";
+    const phone = customer?.phone || "";
+
+    return (
+      name.includes(searchTerm.toLowerCase()) || phone.includes(searchTerm)
+    );
+  });
+
+  if (isLoading) return <p>Loading...</p>;
+  if (isError) return <p>Error...</p>;
 
   return (
     <div className="min-h-screen bg-[#FDF1F7] pb-12">
@@ -300,7 +318,7 @@ const CustomarManagement: React.FC = () => {
         <div className="flex items-center justify-between mb-8 ">
           <div>
             <h1 className="text-lg md:text-2xl font-bold text-[#333843]">
-              Order Details
+              All Customers
             </h1>
             <div className="flex items-center mt-1">
               <span className="text-[#A8537B] text-sm font-normal">
@@ -323,33 +341,10 @@ const CustomarManagement: React.FC = () => {
                 </svg>
               </span>
               <span className="text-[#A8537B] text-sm font-normal">
-                Order List
-              </span>
-              <span className="mx-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 18 18"
-                  fill="none"
-                >
-                  <path
-                    fill-rule="evenodd"
-                    clip-rule="evenodd"
-                    d="M6.59467 3.96967C6.30178 4.26256 6.30178 4.73744 6.59467 5.03033L10.5643 9L6.59467 12.9697C6.30178 13.2626 6.30178 13.7374 6.59467 14.0303C6.88756 14.3232 7.36244 14.3232 7.65533 14.0303L12.4205 9.26516C12.5669 9.11872 12.5669 8.88128 12.4205 8.73484L7.65533 3.96967C7.36244 3.67678 6.88756 3.67678 6.59467 3.96967Z"
-                    fill="#B6B7BC"
-                  />
-                </svg>
-              </span>
-              <span className="text-[#919191] text-sm font-normal">
-                Order Details
+                All Customers
               </span>
             </div>
           </div>
-          <button className="flex items-center px-4 py-2 bg-[#C8A8E9] text-[#FFF] rounded-[8px] hover:bg-purple-300 cursor-pointer transition-colors">
-            Add Customers
-            <Plus className="w-4 h-4 ml-2" />
-          </button>
         </div>
 
         {/* Stats Cards */}
@@ -403,111 +398,6 @@ const CustomarManagement: React.FC = () => {
                   />
                   <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 </div>
-
-                {/* filter btn */}
-                <button className="flex items-center bg-[#C8A8E9] px-4 py-2 gap-3 cursor-pointer rounded-[8px] text-[#FFF] text-base font-semibold hover:bg-purple-300 transition-colors">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="21"
-                    height="22"
-                    viewBox="0 0 21 22"
-                    fill="none"
-                  >
-                    <path
-                      d="M1.59253 8.40348H19.4165"
-                      stroke="#53545C"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M14.942 12.3097H14.9512"
-                      stroke="#53545C"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M10.5047 12.3097H10.514"
-                      stroke="#53545C"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M6.05793 12.3097H6.0672"
-                      stroke="#53545C"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M14.942 16.1955H14.9512"
-                      stroke="#53545C"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M10.5047 16.1955H10.514"
-                      stroke="#53545C"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M6.05793 16.1955H6.0672"
-                      stroke="#53545C"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M14.5438 1V4.29078"
-                      stroke="#53545C"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      d="M6.4654 1V4.29078"
-                      stroke="#53545C"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                    <path
-                      fill-rule="evenodd"
-                      clip-rule="evenodd"
-                      d="M14.7383 2.5791H6.27096C3.33427 2.5791 1.5 4.21504 1.5 7.22213V16.2718C1.5 19.3261 3.33427 20.9999 6.27096 20.9999H14.729C17.675 20.9999 19.5 19.3545 19.5 16.3474V7.22213C19.5092 4.21504 17.6842 2.5791 14.7383 2.5791Z"
-                      stroke="#53545C"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  Filter
-                </button>
-
-                {/* share btn */}
-                <button className="flex items-center bg-[#C8A8E9] px-4 py-2 gap-3 cursor-pointer rounded-[8px] text-[#FFF] text-base font-semibold hover:bg-purple-300 transition-colors">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="21"
-                    height="20"
-                    viewBox="0 0 21 20"
-                    fill="none"
-                  >
-                    <path
-                      d="M14.3325 6.17463L8.60904 11.9592L2.09944 7.88767C1.16675 7.30414 1.36077 5.88744 2.41572 5.57893L17.8712 1.05277C18.8373 0.769629 19.7326 1.67283 19.4456 2.642L14.8731 18.0868C14.5598 19.1432 13.1512 19.332 12.5732 18.3953L8.60601 11.9602"
-                      stroke="#53545C"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  Share
-                </button>
               </div>
             </div>
           </div>
@@ -572,15 +462,15 @@ const CustomarManagement: React.FC = () => {
 
               {/* table body */}
               <tbody className="bg-white divide-y divide-[#FDF1F7]">
-                {filteredCustomers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-gray-50">
+                {filteredCustomers?.map((customer) => (
+                  <tr key={customer._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap flex justify-start items-center ">
                       <div className="relative flex items-center justify-center w-5 h-5">
                         <input
                           type="checkbox"
-                          checked={selectedCustomers.includes(customer.id)}
+                          checked={selectedCustomers.includes(customer._id)}
                           onChange={(e) =>
-                            handleSelectCustomer(customer.id, e.target.checked)
+                            handleSelectCustomer(customer._id, e.target.checked)
                           }
                           className="peer w-full h-full accent-[#C8A8E9] bg-white border border-gray-300 rounded appearance-none checked:bg-[#C8A8E9] checked:border-transparent"
                         />
@@ -591,7 +481,7 @@ const CustomarManagement: React.FC = () => {
                       {/* img  */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <img
-                          src={customer.image}
+                          src={customer.avatar}
                           alt={customer.name}
                           className="w-11 h-11 rounded-[4px] object-cover"
                         />
@@ -611,32 +501,35 @@ const CustomarManagement: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex px-4 py-2 text-sm font-medium rounded-[8px] ${getStatusColor(
-                          customer.status
+                          getUserStatus(customer._id),
                         )}`}
                       >
-                        {customer.status}
+                        {getUserStatus(customer._id)}
                       </span>
                     </td>
 
                     {/* total buy */}
                     <td className="px-6 py-4 whitespace-nowrap text-base font-normal text-[#505050]">
-                      ${customer.totalBuy}
+                      ${getTotalBuy(customer._id).toFixed(2)}
                     </td>
 
                     {/* method */}
                     <td className="px-6 py-4 whitespace-nowrap text-base font-normal text-[#505050]">
-                      {customer.method}
+                      {formatPaymentMethod(getPaymentMethod(customer._id))}
                     </td>
 
                     {/* due data */}
                     <td className="px-6 py-4 whitespace-nowrap text-base font-normal text-[#505050]">
-                      {customer.dueDate}
+                      {getDueDate(customer._id)}
                     </td>
 
                     {/* action */}
                     <td className="px-6 py-4 flex items-center justify-center whitespace-nowrap">
                       <div className="flex items-center space-x-2">
-                        <button className="p-1 cursor-pointer hover:text-purple-600 transition-colors">
+                        <Link
+                          to={`/products-update/${customer._id}`}
+                          className="p-1 cursor-pointer hover:text-purple-600 transition-colors"
+                        >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="16"
@@ -647,20 +540,25 @@ const CustomarManagement: React.FC = () => {
                             <path
                               d="M8 13.333H14"
                               stroke="#505050"
-                              stroke-width="2"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                             />
                             <path
                               d="M11.2504 1.47176C11.5524 1.1697 11.9621 1 12.3893 1C12.6008 1 12.8103 1.04166 13.0057 1.12261C13.2011 1.20355 13.3787 1.32219 13.5282 1.47176C13.6778 1.62133 13.7964 1.79889 13.8774 1.99431C13.9583 2.18972 14 2.39917 14 2.61069C14 2.82221 13.9583 3.03166 13.8774 3.22708C13.7964 3.42249 13.6778 3.60006 13.5282 3.74962L4.03715 13.2407L1 14L1.75929 10.9629L11.2504 1.47176Z"
                               stroke="#505050"
-                              stroke-width="2"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                             />
                           </svg>
-                        </button>
-                        <button className="p-1 cursor-pointer hover:text-purple-600 transition-colors">
+                        </Link>
+
+                        {/* delete button */}
+                        <button
+                          onClick={() => openDeleteModal(customer._id)}
+                          className="p-1 cursor-pointer hover:text-purple-600 transition-colors"
+                        >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="24"
@@ -677,8 +575,11 @@ const CustomarManagement: React.FC = () => {
                             />
                           </svg>
                         </button>
-                        <button className="p-1 cursor-pointer hover:text-purple-600 transition-colors"
-                        onClick={() => navigate(`/customers-details-page`)}
+
+                        {/* details button */}
+                        <Link
+                          to={`/customers-details-page/${customer._id}`}
+                          className="p-1 cursor-pointer hover:text-purple-600 transition-colors"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -688,36 +589,62 @@ const CustomarManagement: React.FC = () => {
                             fill="none"
                           >
                             <path
-                              fill-rule="evenodd"
-                              clip-rule="evenodd"
+                              fillRule="evenodd"
+                              clipRule="evenodd"
                               d="M22 12.0002C20.2531 15.5764 15.8775 19 11.9998 19C8.12201 19 3.74646 15.5764 2 11.9998"
                               stroke="#505050"
-                              stroke-width="1.4"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
+                              strokeWidth="1.4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                             />
                             <path
-                              fill-rule="evenodd"
-                              clip-rule="evenodd"
+                              fillRule="evenodd"
+                              clipRule="evenodd"
                               d="M22 12.0002C20.2531 8.42398 15.8782 5 12.0005 5C8.1227 5 3.74646 8.42314 2 11.9998"
                               stroke="#505050"
-                              stroke-width="1.4"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
+                              strokeWidth="1.4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                             />
                             <path
                               d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z"
                               stroke="#505050"
-                              stroke-width="1.4"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
+                              strokeWidth="1.4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
                             />
                           </svg>
-                        </button>
+                        </Link>
                       </div>
                     </td>
                   </tr>
                 ))}
+                {/* modal show */}
+                {isDeleteModalOpen && (
+                  <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
+                    <div className="bg-white p-6 rounded-lg w-[300px]">
+                      <h2 className="text-lg font-semibold mb-4">
+                        Are you sure?
+                      </h2>
+
+                      <div className="flex justify-end gap-3">
+                        <button
+                          onClick={() => setIsDeleteModalOpen(false)}
+                          className="px-4 py-2 cursor-pointer bg-gray-200 rounded"
+                        >
+                          Cancel
+                        </button>
+
+                        <button
+                          onClick={handleDeleteUser}
+                          className="px-4 py-2 cursor-pointer bg-red-500 text-white rounded"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </tbody>
             </table>
           </div>
