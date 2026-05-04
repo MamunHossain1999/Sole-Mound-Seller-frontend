@@ -6,7 +6,7 @@ import { IoIosArrowDown } from "react-icons/io";
 import { useGetAllOrdersQuery } from "@/redux/api/orderApi";
 
 const OrderDashboard: React.FC = () => {
-  const { data: orders = [], isLoading, isError } = useGetAllOrdersQuery();
+  const { data: orders = [], isLoading, isError } = useGetAllOrdersQuery({});
 
   const stats = {
     total: orders.length,
