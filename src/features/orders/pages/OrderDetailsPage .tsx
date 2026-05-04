@@ -27,6 +27,7 @@ const OrderDetailsPage: React.FC = () => {
     "pending",
     "payment",
     "processing",
+    "pickup",
     "on_the_way",
     "completed",
     "cancelled",
@@ -352,6 +353,7 @@ const OrderDetailsPage: React.FC = () => {
                 <option value="payment">Payment</option>
                 <option value="processing">Processing</option>
                 <option value="on_the_way">On The Way</option>
+                <option value="pickup">PickUp</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
               </select>
