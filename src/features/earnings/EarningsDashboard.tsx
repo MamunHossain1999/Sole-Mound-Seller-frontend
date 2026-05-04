@@ -1,54 +1,103 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { useGetAllOrdersQuery } from "@/redux/api/orderApi";
+import {
+  useCreateWithdrawMutation,
+  useGetBankInfoQuery,
+} from "@/redux/api/bankApi";
+import { toast } from "react-toastify";
 
 interface Transaction {
   id: string;
-  amount: string;
-  method: string;
-  status: "Completed" | "Pending" | "Processing";
+  total: string | number; // API response অনুযায়ী string বা number হতে পারে
+  paymentMethod: string;
+  status:
+    | "completed"
+    | "pending"
+    | "processing"
+    | "cancelled"
+    | "payment"
+    | "on_the_way";
+  paymentStatus: "paid" | "unpaid";
   date: string;
   comment?: string;
+  summary?: {
+    total: number;
+  };
 }
 
-const transactions: Transaction[] = [
-  {
-    id: "15674",
-    amount: "$6,934",
-    method: "Bank Account",
-    status: "Completed",
-    date: "29 Dec 2022",
-  },
-  {
-    id: "24567",
-    amount: "$1,885",
-    method: "Visa",
-    status: "Pending",
-    date: "24 Dec 2022",
-  },
-  {
-    id: "34567",
-    amount: "$8,519",
-    method: "Bank Account",
-    status: "Completed",
-    date: "12 Dec 2022",
-  },
-  {
-    id: "41234",
-    amount: "$948",
-    method: "PayPal",
-    status: "Processing",
-    date: "21 Oct 2022",
-  },
-];
 const EarningsDashboard: React.FC = () => {
-  const [transaction] = useState<Transaction[]>(transactions);
-
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
 
-  // checkbox btn
+  // pagination
+  const [page, setPage] = useState(1);
+  const limit = 5;
+
+  const { data: bank } = useGetBankInfoQuery(undefined);
+  const [createWithdraw] = useCreateWithdrawMutation();
+  const { data: transactions = [] } = useGetAllOrdersQuery(
+    { page, limit },
+    {
+      pollingInterval: 5000,
+      refetchOnFocus: true,
+      refetchOnReconnect: true,
+    },
+  );
+  const nextPage = () => setPage((p) => p + 1);
+  const prevPage = () => setPage((p) => Math.max(p - 1, 1));
+
+  // bank withdraw handle
+  const handleWithdraw = async () => {
+    try {
+      await createWithdraw({ amount: Number(withdrawAmount) }).unwrap();
+      toast.success("Withdraw request sent");
+      setShowWithdrawModal(false);
+      setWithdrawAmount("");
+    } catch (err) {
+      console.error("Withdraw Error:", err);
+      toast.error("Failed to send withdraw request");
+    }
+  };
+
+  // total balance calculation
+  const totalBalance = transactions.reduce((sum, item) => {
+    const amount = item.summary?.total || Number(item.total) || 0;
+    return sum + amount;
+  }, 0);
+
+  // withdrawalBalance (Paid and Completed orders)
+  const withdrawalBalance = transactions
+    .filter(
+      (item) => item.paymentStatus === "paid" && item.status === "completed",
+    )
+    .reduce(
+      (sum, item) => sum + (item.summary?.total || Number(item.total) || 0),
+      0,
+    );
+
+  // due balance (Unpaid orders)
+  const dueBalance = transactions
+    .filter((item) => item.paymentStatus === "unpaid")
+    .reduce(
+      (sum, item) => sum + (item.summary?.total || Number(item.total) || 0),
+      0,
+    );
+
+  // last requested (Last transaction amount)
+  const lastRequested =
+    transactions.length > 0
+      ? transactions[transactions.length - 1]?.summary?.total ||
+        Number(transactions[transactions.length - 1]?.total) ||
+        0
+      : 0;
+
+  // checkbox handlers
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedItems(transaction.map((cat) => cat.id));
+      setSelectedItems(transactions.map((item) => item.id));
     } else {
       setSelectedItems([]);
     }
@@ -62,18 +111,25 @@ const EarningsDashboard: React.FC = () => {
     }
   };
 
-  const isAllSelected = selectedItems.length === transactions.length;
+  const isAllSelected =
+    transactions.length > 0 && selectedItems.length === transactions.length;
   const isIndeterminate =
     selectedItems.length > 0 && selectedItems.length < transactions.length;
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: Transaction["status"]): string => {
     switch (status) {
-      case "Completed":
-        return "bg-green-100 text-green-700";
-      case "Pending":
-        return "bg-yellow-100 text-yellow-700";
-      case "Processing":
-        return "bg-blue-100 text-blue-700";
+      case "completed":
+        return "bg-emerald-100 text-emerald-700";
+      case "payment":
+        return "bg-indigo-100 text-indigo-700";
+      case "pending":
+        return "bg-amber-100 text-amber-700";
+      case "on_the_way":
+        return "bg-sky-100 text-sky-700";
+      case "processing":
+        return "bg-purple-100 text-purple-700";
+      case "cancelled":
+        return "bg-rose-100 text-rose-700";
       default:
         return "bg-gray-100 text-gray-700";
     }
@@ -101,8 +157,8 @@ const EarningsDashboard: React.FC = () => {
                   fill="none"
                 >
                   <path
-                    fill-rule="evenodd"
-                    clip-rule="evenodd"
+                    fillRule="evenodd"
+                    clipRule="evenodd"
                     d="M6.59467 3.96967C6.30178 4.26256 6.30178 4.73744 6.59467 5.03033L10.5643 9L6.59467 12.9697C6.30178 13.2626 6.30178 13.7374 6.59467 14.0303C6.88756 14.3232 7.36244 14.3232 7.65533 14.0303L12.4205 9.26516C12.5669 9.11872 12.5669 8.88128 12.4205 8.73484L7.65533 3.96967C7.36244 3.67678 6.88756 3.67678 6.59467 3.96967Z"
                     fill="#B6B7BC"
                   />
@@ -117,6 +173,7 @@ const EarningsDashboard: React.FC = () => {
 
         {/* Balance Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {/* Card: Total Balance */}
           <div className="bg-white rounded-lg p-6 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 flex items-center justify-center bg-[#FDF1F7] rounded-lg">
@@ -144,10 +201,13 @@ const EarningsDashboard: React.FC = () => {
               <p className="text-base font-semibold text-[#505050] mb-1">
                 Total Balance
               </p>
-              <p className="text-xl font-bold text-[#1F1F1F]">$723.00</p>
+              <p className="text-xl font-bold text-[#1F1F1F]">
+                ${totalBalance.toFixed(2)}
+              </p>
             </div>
           </div>
 
+          {/* Card: Withdrawal Balance */}
           <div className="bg-white rounded-lg p-6 shadow-sm ">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 flex items-center justify-center bg-[#FDF1F7] rounded-lg">
@@ -169,10 +229,13 @@ const EarningsDashboard: React.FC = () => {
               <p className="text-base font-semibold text-[#505050] mb-1">
                 Withdrawal Balance
               </p>
-              <p className="text-xl font-bold text-[#1F1F1F]">$129.00</p>
+              <p className="text-xl font-bold text-[#1F1F1F]">
+                ${withdrawalBalance.toFixed(2)}
+              </p>
             </div>
           </div>
 
+          {/* Card: Due Balance */}
           <div className="bg-white rounded-lg p-6 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 flex items-center justify-center bg-[#FDF1F7] rounded-lg">
@@ -183,10 +246,10 @@ const EarningsDashboard: React.FC = () => {
                   viewBox="0 0 24 24"
                   fill="none"
                 >
-                  <g clip-path="url(#clip0_3155_39518)">
+                  <g clipPath="url(#clip0_3155_39518)">
                     <path
-                      fill-rule="evenodd"
-                      clip-rule="evenodd"
+                      fillRule="evenodd"
+                      clipRule="evenodd"
                       d="M21.2417 6.93839H18.5935V4.17258H20.6106C20.9582 4.17258 21.2417 4.45608 21.2417 4.8037V6.93839ZM7.1902 6.93839H9.23414V4.17258H7.1902C6.42745 4.17258 5.80683 4.79297 5.80683 5.55548C5.80683 6.318 6.42745 6.93839 7.1902 6.93839ZM16.008 13.9354C16.008 12.3827 17.2758 11.115 18.8285 11.115H22.9999V8.31999C22.9999 7.97236 22.7164 7.68886 22.3688 7.68886H7.19025C7.15876 7.68885 7.12728 7.68799 7.09584 7.68628C6.40613 7.65609 5.80041 7.2968 5.43211 6.762V12.3104C5.49759 12.3083 5.56327 12.3068 5.62931 12.3068C6.62318 12.3064 7.60181 12.551 8.47861 13.019C8.63681 12.8553 8.84122 12.7438 9.0645 12.6994C9.67228 12.5779 10.2662 12.9735 10.388 13.5812L10.7218 15.2464C10.7593 15.4338 10.7485 15.6276 10.6903 15.8096C10.6322 15.9916 10.5286 16.1558 10.3894 16.2867C10.3077 16.3706 10.3701 16.4313 10.4319 16.4281C10.9965 16.3983 11.5056 16.798 11.5997 17.3688C11.6535 17.6958 11.6805 18.0265 11.6805 18.3578C11.6805 18.9933 11.5818 19.6061 11.3993 20.1819H22.3688C22.7164 20.1819 22.9999 19.8984 22.9999 19.5508V16.7558H18.8286C17.2759 16.7558 16.0081 15.488 16.0081 13.9353L16.008 13.9354ZM23.672 12.5073V15.3635C23.672 15.7173 23.3835 16.0059 23.0296 16.0059H18.8285C17.6897 16.0059 16.758 15.0742 16.758 13.9354C16.758 12.7967 17.6898 11.865 18.8285 11.865H23.0296C23.3835 11.865 23.672 12.1535 23.672 12.5073ZM19.7048 13.9355C19.7048 13.4615 19.3205 13.0772 18.8465 13.0772C18.3725 13.0772 17.9882 13.4615 17.9882 13.9355C17.9882 14.4095 18.3725 14.7938 18.8465 14.7938C19.3205 14.7938 19.7048 14.4095 19.7048 13.9355ZM5.62927 15.0151C7.47539 15.0151 8.97197 16.5117 8.97197 18.3578C8.97197 20.204 7.47539 21.7005 5.62927 21.7005C3.78314 21.7005 2.28656 20.204 2.28656 18.3578C2.28656 16.5117 3.78314 15.0151 5.62927 15.0151ZM5.62927 15.802C5.52981 15.802 5.43443 15.8415 5.3641 15.9119C5.29377 15.9822 5.25427 16.0776 5.25427 16.177V18.3578C5.25425 18.4297 5.2749 18.5001 5.31374 18.5606C5.35259 18.621 5.40799 18.6691 5.47336 18.699L7.09814 19.6371C7.18392 19.685 7.28516 19.6973 7.3799 19.6711C7.47463 19.6449 7.55523 19.5824 7.6042 19.4972C7.65317 19.412 7.66656 19.3109 7.64147 19.2159C7.61638 19.1208 7.55484 19.0395 7.47019 18.9896L6.00422 18.1432V16.177C6.00422 16.0776 5.96471 15.9822 5.89438 15.9119C5.82406 15.8415 5.72872 15.802 5.62927 15.802ZM10.4289 17.1818C10.3308 17.198 10.243 17.2524 10.185 17.3331C10.127 17.4139 10.1034 17.5144 10.1195 17.6126C10.16 17.859 10.1804 18.1082 10.1805 18.3579C10.1805 20.8673 8.13862 22.909 5.62931 22.909C3.12 22.909 1.07827 20.8673 1.07827 18.3579C1.07827 15.8486 3.11953 13.8069 5.62931 13.8069C6.64226 13.8063 7.62639 14.1441 8.42541 14.7668L8.0227 14.6614C7.97509 14.6489 7.92549 14.646 7.87674 14.6527C7.82798 14.6594 7.78102 14.6756 7.73854 14.7005C7.69606 14.7253 7.65889 14.7583 7.62915 14.7975C7.59942 14.8367 7.57771 14.8814 7.56525 14.929C7.51237 15.1292 7.63238 15.3343 7.83239 15.3867L9.52312 15.8303C9.5847 15.8464 9.64935 15.8466 9.71101 15.8309C9.77267 15.8151 9.82933 15.784 9.87567 15.7404C9.92202 15.6968 9.9565 15.6421 9.97587 15.5815C9.99524 15.5209 9.99886 15.4563 9.98639 15.3939L9.65259 13.7288C9.61214 13.5258 9.41438 13.3943 9.21145 13.4349C9.00848 13.4754 8.87695 13.6732 8.91764 13.8761L8.99447 14.2619C8.04644 13.482 6.85681 13.056 5.62927 13.0568C2.70614 13.0568 0.328125 15.435 0.328125 18.3579C0.328125 21.2808 2.70614 23.6588 5.62927 23.6588C8.55239 23.6588 10.9304 21.2808 10.9304 18.3579C10.9304 18.0673 10.9065 17.7756 10.8597 17.491C10.8258 17.2865 10.6328 17.1479 10.4289 17.1818V17.1818ZM17.8435 6.93844H9.98414V0.712547C9.98414 0.507563 10.1519 0.339844 10.3568 0.339844H17.4709C17.6759 0.339844 17.8436 0.507563 17.8436 0.712547V6.93839L17.8435 6.93844ZM14.8357 3.54891C14.5554 3.38438 14.2635 3.31477 13.9812 3.24741C13.8865 3.22481 13.797 3.20358 13.7079 3.17892C13.4444 3.10547 13.302 3.02569 13.2313 2.91202C13.1468 2.77711 13.2248 2.66297 13.2786 2.60691C13.4221 2.45705 13.7647 2.38088 14.0933 2.42564C14.3548 2.46136 14.562 2.56645 14.6341 2.7C14.7323 2.88239 14.9601 2.95041 15.1422 2.8523C15.1856 2.82893 15.2239 2.79726 15.255 2.75908C15.2861 2.7209 15.3094 2.67697 15.3235 2.62979C15.3376 2.58262 15.3423 2.53312 15.3373 2.48413C15.3323 2.43513 15.3177 2.38761 15.2943 2.34427C15.1171 2.01497 14.7537 1.78242 14.2886 1.69744V1.37789C14.2886 1.17066 14.121 1.00294 13.9139 1.00294C13.7069 1.00294 13.5387 1.17066 13.5387 1.37789V1.69495C13.214 1.7535 12.9269 1.88977 12.7371 2.08753C12.404 2.43469 12.3482 2.91445 12.5952 3.30928C12.8216 3.67181 13.2013 3.816 13.5064 3.90117C13.609 3.92986 13.7098 3.95386 13.8072 3.97711C14.047 4.03406 14.2728 4.08788 14.4561 4.19564C14.6778 4.32581 14.6638 4.43789 14.6558 4.50502C14.6427 4.61438 14.57 4.71202 14.4617 4.76583C14.0431 4.974 13.2926 4.84538 13.1235 4.53642C13.0241 4.35473 12.7963 4.28827 12.6143 4.38769C12.433 4.48711 12.3659 4.71492 12.4656 4.89666C12.6667 5.26458 13.0835 5.49127 13.5386 5.57691V5.90034C13.5386 6.10734 13.7065 6.27525 13.9138 6.27525C14.1211 6.27525 14.2885 6.10734 14.2885 5.90034V5.59163C14.4714 5.56383 14.6445 5.5125 14.7954 5.43727C15.1301 5.27072 15.3562 4.95609 15.4 4.59563C15.4524 4.16531 15.2524 3.79331 14.8357 3.54877L14.8357 3.54891Z"
                       fill="#C8A8E9"
                     />
@@ -203,10 +266,13 @@ const EarningsDashboard: React.FC = () => {
               <p className="text-base font-semibold text-[#505050] mb-1">
                 Due Balance
               </p>
-              <p className="text-xl font-bold text-[#1F1F1F]">$14.00</p>
+              <p className="text-xl font-bold text-[#1F1F1F]">
+                ${dueBalance.toFixed(2)}
+              </p>
             </div>
           </div>
 
+          {/* Card: Last Requested */}
           <div className="bg-white rounded-lg p-6 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 flex items-center justify-center bg-[#FDF1F7] rounded-lg">
@@ -242,7 +308,9 @@ const EarningsDashboard: React.FC = () => {
               <p className="text-base font-semibold text-[#505050] mb-1">
                 Last Requested
               </p>
-              <p className="text-xl font-bold text-[#1F1F1F]">$230.00</p>
+              <p className="text-xl font-bold text-[#1F1F1F]">
+                ${lastRequested.toFixed(2)}
+              </p>
             </div>
           </div>
         </div>
@@ -257,81 +325,74 @@ const EarningsDashboard: React.FC = () => {
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 items-center">
               <div className="space-y-4">
-                <div className="flex justify-between items-start">
-                  <span className="text-base font-semibold text-[#313B5E] text-left w-1/2">
-                    Bank Name :
-                  </span>
-                  <span className="text-sm font-normal text-[#505050] text-left w-1/2">
-                    National Bank
-                  </span>
+                <div className="flex justify-between">
+                  <span className="font-semibold w-1/2">Bank Name :</span>
+                  <span className="w-1/2">{bank?.bankName || "N/A"}</span>
                 </div>
-                <div className="flex justify-between items-start">
-                  <span className="text-base font-semibold text-[#313B5E] text-left w-1/2">
-                    Account Number :
-                  </span>
-                  <span className="text-sm font-normal text-[#505050] text-left w-1/2">
-                    4756498354
-                  </span>
+                <div className="flex justify-between">
+                  <span className="font-semibold w-1/2">Account Number: </span>
+                  <span className="w-1/2">{bank?.accountNumber || "N/A"}</span>
                 </div>
-                <div className="flex justify-between items-start">
-                  <span className="text-base font-semibold text-[#313B5E] text-left w-1/2">
-                    Swift Code :
-                  </span>
-                  <span className="text-sm font-normal text-[#505050] text-left w-1/2">
-                    4576H
-                  </span>
+                <div className="flex justify-between">
+                  <span className="font-semibold w-1/2">Swift Code :</span>
+                  <span className="w-1/2">{bank?.swiftCode || "N/A"}</span>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <div className="flex justify-between items-start">
-                  <span className="text-base font-semibold text-[#313B5E] text-left w-1/2">
-                    Country :
-                  </span>
-                  <span className="text-sm font-normal text-[#505050] text-left w-1/2">
-                    London
-                  </span>
+                <div className="flex justify-between">
+                  <span className="font-semibold w-1/2">Country :</span>
+                  <span className="w-1/2">{bank?.country || "N/A"}</span>
                 </div>
-                <div className="flex justify-between items-start">
-                  <span className="text-base font-semibold text-[#313B5E] text-left w-1/2">
-                    Account Name :
-                  </span>
-                  <span className="text-sm font-normal text-[#505050] text-left w-1/2">
-                    Dhaleyan Roy
-                  </span>
+                <div className="flex justify-between">
+                  <span className="font-semibold w-1/2">Account Name </span>
+                  <span className="w-1/2">{bank?.accountName || "N/A"}</span>
                 </div>
-                <div className="flex justify-between items-start">
-                  <span className="text-base font-semibold text-[#313B5E] text-left w-1/2">
-                    Email :
-                  </span>
-                  <span className="text-sm font-normal text-[#505050] text-left w-1/2">
-                    denialui12@gmail.com
-                  </span>
+                <div className="flex justify-between">
+                  <span className="font-semibold w-1/2">Email :</span>
+                  <span className="w-1/2">{bank?.email || "N/A"}</span>
                 </div>
               </div>
 
               <div className="flex justify-end items-end">
-                <button className="px-6 py-2 bg-[#C8A8E9] flex gap-2 items-center cursor-pointer text-[#FFF] text-base font-semibold rounded-[4px] hover:bg-purple-300 transition-colors">
+                <button
+                  onClick={() => setShowWithdrawModal(true)}
+                  className="px-6 py-2 bg-[#C8A8E9] flex gap-2 items-center text-white font-semibold rounded hover:bg-purple-300"
+                >
                   Withdrawals Request
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="21"
-                    height="20"
-                    viewBox="0 0 21 20"
-                    fill="none"
-                  >
-                    <path
-                      opacity="0.4"
-                      d="M20.5 14.084V5.916C20.5 2.377 18.224 0 14.835 0H6.165C2.776 0 0.5 2.377 0.5 5.916V14.084C0.5 17.622 2.777 20 6.166 20H14.835C18.224 20 20.5 17.622 20.5 14.084Z"
-                      fill="#F1DAFC"
-                    />
-                    <path
-                      d="M14.7792 9.14405L11.0312 5.37906C10.7492 5.09606 10.2502 5.09606 9.96718 5.37906L6.21918 9.14405C5.92718 9.43806 5.92818 9.91305 6.22218 10.2051C6.51618 10.4971 6.99018 10.4971 7.28318 10.2031L9.75018 7.72605V14.0811C9.75018 14.4961 10.0862 14.8311 10.5002 14.8311C10.9142 14.8311 11.2502 14.4961 11.2502 14.0811V7.72605L13.7162 10.2031C13.8632 10.3501 14.0552 10.4231 14.2482 10.4231C14.4392 10.4231 14.6312 10.3501 14.7772 10.2051C15.0702 9.91305 15.0712 9.43806 14.7792 9.14405Z"
-                      fill="#FDF1F7"
-                    />
-                  </svg>
                 </button>
               </div>
+              {showWithdrawModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                  <div className="bg-white p-6 rounded-lg w-[350px] shadow-lg">
+                    <h2 className="text-lg font-bold mb-4">Withdraw Request</h2>
+
+                    <input
+                      type="number"
+                      placeholder="Enter amount"
+                      value={withdrawAmount}
+                      onChange={(e) => setWithdrawAmount(e.target.value)}
+                      className="w-full border border-gray-300 rounded px-3 py-2 mb-4 outline-none focus:ring-2 focus:ring-[#C8A8E9]"
+                    />
+
+                    <div className="flex justify-end gap-3">
+                      <button
+                        onClick={() => setShowWithdrawModal(false)}
+                        className="px-4 py-2 bg-gray-200 rounded"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        onClick={handleWithdraw}
+                        className="px-4 py-2 bg-[#C8A8E9] text-white rounded"
+                      >
+                        Submit
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -345,7 +406,7 @@ const EarningsDashboard: React.FC = () => {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full not-last:bg-[#FDF1F7] mt-4">
-              <thead className=" ">
+              <thead>
                 <tr>
                   <th className="px-6 py-3 flex gap-3 text-left text-base font-semibold text-[#505050] tracking-wider">
                     <div className="relative flex items-center justify-center w-5 h-5">
@@ -366,7 +427,6 @@ const EarningsDashboard: React.FC = () => {
                       Transaction ID
                     </div>
                   </th>
-
                   <th className="px-6 py-3 text-left text-base font-semibold text-[#505050] tracking-wider">
                     Amount
                   </th>
@@ -375,8 +435,7 @@ const EarningsDashboard: React.FC = () => {
                   </th>
                   <th className="px-6 py-3 text-left text-base font-semibold text-[#505050] tracking-wider">
                     <div className="flex items-center">
-                      Status
-                      <ChevronDown className="w-4 h-4 ml-1" />
+                      Status <ChevronDown className="w-4 h-4 ml-1" />
                     </div>
                   </th>
                   <th className="px-6 py-3 text-left text-base font-semibold text-[#505050] tracking-wider">
@@ -384,14 +443,13 @@ const EarningsDashboard: React.FC = () => {
                   </th>
                   <th className="px-6 py-3 text-left text-base font-semibold text-[#505050] tracking-wider">
                     <div className="flex items-center">
-                      Comment
-                      <ChevronDown className="w-4 h-4 ml-1" />
+                      Comment <ChevronDown className="w-4 h-4 ml-1" />
                     </div>
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {transactions.map((transaction) => (
+                {transactions?.map((transaction) => (
                   <tr key={transaction.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap flex items-center">
                       <div className="relative flex items-center justify-center w-5 h-5">
@@ -411,18 +469,20 @@ const EarningsDashboard: React.FC = () => {
                         {transaction.id}
                       </div>
                     </td>
-
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {transaction.amount}
+                      $
+                      {(
+                        Number(transaction.summary?.total) ||
+                        Number(transaction.total) ||
+                        0
+                      ).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {transaction.method}
+                      {transaction.paymentMethod}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
-                          transaction.status
-                        )}`}
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(transaction.status)}`}
                       >
                         {transaction.status}
                       </span>
@@ -439,6 +499,25 @@ const EarningsDashboard: React.FC = () => {
             </table>
           </div>
         </div>
+      </div>
+
+      {/* paginaiton */}
+      <div className="flex justify-end items-center gap-3 mt-6">
+        <button
+          disabled={page <= 1}
+          onClick={prevPage}
+          className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+        >
+          Prev
+        </button>
+        <span className="text-sm font-medium">Page {page}</span>
+
+        <button
+          onClick={nextPage}
+          className="px-4 py-2 bg-[#C8A8E9] text-white rounded"
+        >
+          Next
+        </button>
       </div>
     </div>
   );

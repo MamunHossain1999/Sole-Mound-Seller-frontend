@@ -119,7 +119,7 @@ const CustomerDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
 
   const { data: profile, isLoading } = useGetUserByIdQuery(id as string);
-  const { data: rawOrders = [] } = useGetAllOrdersQuery();
+  const { data: rawOrders = [] } = useGetAllOrdersQuery({});
 
   const typedProfile = profile as UserProfile | undefined;
   const allOrders = rawOrders as Order[];
@@ -317,11 +317,6 @@ const CustomerDetailsPage: React.FC = () => {
                   Phone: {typedProfile?.phone ?? "N/A"}
                 </p>
               </div>
-            </div>
-            <div className="flex space-x-3">
-              <button className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm hover:bg-purple-600 transition-colors">
-                Send Message
-              </button>
             </div>
           </div>
         </div>

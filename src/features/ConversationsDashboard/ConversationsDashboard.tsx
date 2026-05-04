@@ -96,7 +96,7 @@ const ConversationsDashboard: React.FC = () => {
   const [markSeen] = useMarkSeenMutation();
 
   const [deleteMessageMutation] = useDeleteMessageMutation();
-  const { data: users } = useGetAllUsersQuery();
+  const { data: users, refetch } = useGetAllUsersQuery();
 
   const { data: chatData } = useGetChatQuery(selectedContact, {
     skip: !selectedContact || !currentUserId,
@@ -104,27 +104,27 @@ const ConversationsDashboard: React.FC = () => {
   const [sendMessage] = useSendMessageMutation();
 
   // ── Build contacts from users ──
-useEffect(() => {
-  if (!users || !currentUserId) return;
+  useEffect(() => {
+    if (!users || !currentUserId) return;
 
-  const formatted = users.map((user) => ({
-    id: user._id,
-    name: user.name,
-    avatar: user.avatar || "",
-    lastMessage: "",
-    time: "",
-    status: "offline" as const,
-  }));
+    const formatted = users.map((user) => ({
+      id: user._id,
+      name: user.name,
+      avatar: user.avatar || "",
+      lastMessage: "",
+      time: "",
+      status: "offline" as const,
+    }));
 
-  // 🔥 current user কে top এ আনো
-  const sorted = formatted.sort((a, b) => {
-    if (a.id === currentUserId) return -1;
-    if (b.id === currentUserId) return 1;
-    return 0;
-  });
+    // 🔥 current user কে top এ আনো
+    const sorted = formatted.sort((a, b) => {
+      if (a.id === currentUserId) return -1;
+      if (b.id === currentUserId) return 1;
+      return 0;
+    });
 
-  setContacts(sorted);
-}, [users, currentUserId]);
+    setContacts(sorted);
+  }, [users, currentUserId]);
 
   // ─── Format chat data to messages ──
   useEffect(() => {
@@ -264,6 +264,7 @@ useEffect(() => {
       ]);
 
       setMessageInput("");
+      refetch();
     } catch (error) {
       console.error("Send message error:", error);
     }

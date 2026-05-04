@@ -217,7 +217,7 @@ const CustomarManagement: React.FC = () => {
     },
     {
       title: "Invoice & Payment",
-      value: `$${getInvoiceTotalAll()}`,
+      value: `$${getInvoiceTotalAll().toFixed(2)}`,
       change: "+43.9%",
       changeType: "positive",
       icon: (
