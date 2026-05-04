@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+
 import MapCard from "../mapCard/MapCard";
 import shoppingCard from "@/assets/dashboardIcon/shoppingCard.svg";
 import onTheWay from "@/assets/dashboardIcon/onTheWay.svg";
@@ -12,15 +13,25 @@ import walletIcon from "@/assets/dashboardIcon/walletIcon.svg";
 import TopSellingProducts from "./TopSellingProducts";
 import LatestOrder from "./LatestOrder";
 import DashBoardCard from "./DashBoardCard";
+import { useGetAllOrdersQuery } from "@/redux/api/orderApi";
+import { Link } from "react-router";
+import { useGetWithdrawsQuery } from "@/redux/api/bankApi";
 
 const DashboardStats = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("This Month");
+  const { data: orders = [] } = useGetAllOrdersQuery({});
+  const { data: withdraws = [] } = useGetWithdrawsQuery();
 
-  // Order Statistics Data
+
+  // 👉 status count function
+  const getCount = (status: string) =>
+    orders.filter((o: any) => o.status === status).length;
+
+  // Order Statistics Data (ONLY value changed)
   const orderStats = [
     {
       title: "Processed Orders",
-      value: "5",
+      value: getCount("processing"),
       icon: (
         <img src={shoppingCard} alt="Processed Orders" className="w-6 h-6" />
       ),
@@ -29,28 +40,28 @@ const DashboardStats = () => {
     },
     {
       title: "On The Way",
-      value: "23",
+      value: getCount("on_the_way"),
       icon: <img src={onTheWay} alt="On The Way" className="w-6 h-6" />,
       bgColor: "bg-[#F9D4E6]",
       iconBg: "bg-[#F9D4E6]",
     },
     {
       title: "Orders Pending",
-      value: "1034",
+      value: getCount("pending"),
       icon: <img src={pending} alt="Orders Pending" className="w-6 h-6" />,
       bgColor: "bg-[#C3E3FE]",
       iconBg: "bg-[#C3E3FE]",
     },
     {
       title: "Pick-Up",
-      value: "13",
+      value: getCount("pickup"),
       icon: <img src={pickUp} alt="Pick-Up" className="w-6 h-6" />,
       bgColor: "bg-[#FFEDB9]",
       iconBg: "bg-[#FFEDB9]",
     },
     {
       title: "Orders Completed",
-      value: "2345",
+      value: getCount("completed"),
       icon: (
         <img src={ordercomplete} alt="Orders Completed" className="w-6 h-6" />
       ),
@@ -59,12 +70,30 @@ const DashboardStats = () => {
     },
     {
       title: "Orders Cancelled",
-      value: "2345",
+      value: getCount("cancelled"),
       icon: <img src={cancel} alt="Orders Cancelled" className="w-6 h-6" />,
       bgColor: "bg-[#FFB9B9]",
       iconBg: "bg-[#FFB9B9]",
     },
   ];
+
+  // status wise calculation
+
+const approvedWithdraw = withdraws
+  .filter((item: any) => item.status === "approved")
+  .reduce((sum: number, item: any) => sum + (item.amount ?? 0), 0);
+
+  const pendingWithdraw = withdraws
+    .filter((w: any) => w.status === "pending")
+    .reduce((sum: number, item: any) => sum + (item.amount ?? 0), 0);
+
+  const rejectedWithdraw = withdraws
+    .filter((w: any) => w.status === "rejected")
+    .reduce((sum: number, item: any) => sum + (item.amount ?? 0), 0);
+
+  const totalIncome = orders.reduce((sum: number, order: any) => {
+    return sum + (order?.summary?.total ?? 0);
+  }, 0);
 
   // Revenue by Region Data
   const revenueByRegion = [
@@ -90,11 +119,16 @@ const DashboardStats = () => {
               <p className="md:text-[20px] font-bold text-[#A8537B]">
                 Total Orders
               </p>
-              <p className="md:text-2xl font-bold text-[#A8537B] mb-4">4563</p>
+              <p className="md:text-2xl font-bold text-[#A8537B] mb-4">
+                {orders.length}
+              </p>
             </CardContent>
-            <Button className="!bg-[#C8A8E9] w-[203px] h-[48px] mx-auto hover:bg-purple-300 text-[#1F1F1F] text-base">
+            <Link
+              to="/orders-list"
+              className="!bg-[#C8A8E9] w-[203px] text-center items-center py-2 rounded-lg h-[48px] mx-auto hover:bg-purple-300 text-[#1F1F1F] text-base"
+            >
               All Order +
-            </Button>
+            </Link>
           </Card>
 
           {/* Smaller Cards */}
@@ -157,13 +191,12 @@ const DashboardStats = () => {
                     Total Earning
                   </span>
                   <span className="font-bold text-base lg:text-2xl flex items-center ">
-                    <span></span>
-                    $456
+                    <span></span>${totalIncome.toFixed(2)}
                   </span>
                 </div>
                 <div className="px-5 py-6 flex flex-col border border-[#B6B7BC] rounded-[12px]">
                   <span className="text-base lg:text-2xl font-bold text-[#1F1F1F]">
-                    $345
+                    ${approvedWithdraw.toFixed(2)}
                   </span>
                   <span className="text-base lg:text-[20px] font-bold text-[#919191]">
                     Already Withdraw
@@ -171,7 +204,7 @@ const DashboardStats = () => {
                 </div>
                 <div className="px-5 py-6 flex flex-col border border-[#B6B7BC] rounded-[12px]">
                   <span className="ftext-base lg:text-2xl font-bold text-[#1F1F1F]">
-                    $76
+                    ${pendingWithdraw.toFixed(2)}
                   </span>
                   <span className="text-base lg:text-[20px] font-bold text-[#919191]">
                     Pending Withdraw
@@ -179,7 +212,7 @@ const DashboardStats = () => {
                 </div>
                 <div className="px-5 py-6 flex flex-col border border-[#B6B7BC] rounded-[12px]">
                   <span className="text-base lg:text-2xl font-bold text-[#1F1F1F]">
-                    $76
+                    ${rejectedWithdraw.toFixed(2)}
                   </span>
                   <span className="text-base lg:text-[20px] font-bold text-[#919191]">
                     Rejected Withdraw
