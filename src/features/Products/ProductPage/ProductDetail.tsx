@@ -48,7 +48,7 @@ const ProductDetail: React.FC = () => {
   const { data: reviewsData } = useGetReviewsQuery(productData?._id || "", {
     skip: !productData?._id, // ✅ Only fetch when we have real product ID
   });
-  
+
   const [createReview] = useCreateReviewMutation();
   const [deleteReview] = useDeleteReviewMutation();
 
@@ -137,43 +137,43 @@ const ProductDetail: React.FC = () => {
     <div className="mx-auto bg-pink-50 pb-12 min-h-screen">
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6">
-         <div className="w-full">
-  {/* Main Image */}
-  <div className="w-full h-[400px] rounded-lg overflow-hidden border flex items-center justify-center">
-    {productImages?.length > 0 ? (
-      <img
-        src={productImages[selectedImageIndex]}
-        alt="Main"
-        className="max-w-full max-h-full object-contain"
-      />
-    ) : (
-      <p>No Images</p>
-    )}
-  </div>
+          <div className="w-full">
+            {/* Main Image */}
+            <div className="w-full h-[400px] rounded-lg overflow-hidden border flex items-center justify-center">
+              {productImages?.length > 0 ? (
+                <img
+                  src={productImages[selectedImageIndex]}
+                  alt="Main"
+                  className="max-w-full max-h-full object-contain"
+                />
+              ) : (
+                <p>No Images</p>
+              )}
+            </div>
 
-  {/* Thumbnails */}
-  {productImages?.length > 1 && (
-    <div className="flex gap-3 mt-3 overflow-x-auto pb-1">
-      {productImages.map((img: string, index: number) => (
-        <div
-          key={index}
-          onClick={() => setSelectedImageIndex(index)}
-          className={`min-w-[64px] w-16 h-16 flex-shrink-0 border-2 rounded-md overflow-hidden cursor-pointer transition-colors ${
-            selectedImageIndex === index
-              ? "border-purple-600"
-              : "border-gray-200 hover:border-gray-400"
-          }`}
-        >
-          <img
-            src={img}
-            alt={`thumb-${index}`}
-            className="w-full h-full object-cover block"
-          />
-        </div>
-      ))}
-    </div>
-  )}
-</div>
+            {/* Thumbnails */}
+            {productImages?.length > 1 && (
+              <div className="flex gap-3 mt-3 overflow-x-auto pb-1">
+                {productImages.map((img: string, index: number) => (
+                  <div
+                    key={index}
+                    onClick={() => setSelectedImageIndex(index)}
+                    className={`min-w-[64px] w-16 h-16 flex-shrink-0 border-2 rounded-md overflow-hidden cursor-pointer transition-colors ${
+                      selectedImageIndex === index
+                        ? "border-purple-600"
+                        : "border-gray-200 hover:border-gray-400"
+                    }`}
+                  >
+                    <img
+                      src={img}
+                      alt={`thumb-${index}`}
+                      className="w-full h-full object-cover block"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* ====================== PRODUCT INFO SECTION ====================== */}
           <div className="space-y-6">
@@ -410,7 +410,7 @@ const ProductDetail: React.FC = () => {
 
             <button
               onClick={handleSubmitReview}
-              className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-medium"
+              className="mt-4 bg-[#E3AADD] cursor-pointer hover:bg-purple-300 text-white px-8 py-3 rounded-lg font-medium"
             >
               Submit Review
             </button>

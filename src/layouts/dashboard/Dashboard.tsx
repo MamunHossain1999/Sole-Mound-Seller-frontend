@@ -7,12 +7,23 @@ const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-auto">
+    <div className="flex h-screen overflow-hidden">
+      {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
 
-      <div className="flex flex-col flex-1 overflow-auto bg-[#FDF1F7]">
+      {/* Overlay (mobile only) */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+        />
+      )}
+
+      {/* Main */}
+      <div className="flex flex-col flex-1 bg-[#FDF1F7] overflow-auto">
         <Navbar onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 p-6 min-h-screen bg-[#FDF1F7]">
+
+        <main className="flex-1 p-6">
           <Outlet />
         </main>
       </div>

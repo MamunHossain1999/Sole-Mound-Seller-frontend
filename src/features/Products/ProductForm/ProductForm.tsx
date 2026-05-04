@@ -32,6 +32,8 @@ interface ProductFormData {
   weight: string;
   height: string;
   length: string;
+  brand?: string;
+  startDate: string;
 }
 
 // ─── Shared Input Styles ──────────────────────────────────────────────────────
@@ -60,6 +62,7 @@ const ProductForm: React.FC = () => {
     sku: "",
     barcode: "",
     quantity: "",
+    brand: "",
     tags: [""],
     photos: [],
     videos: [],
@@ -68,6 +71,7 @@ const ProductForm: React.FC = () => {
     weight: "",
     height: "",
     length: "",
+    startDate: "",
   });
 
   const [newTag, setNewTag] = useState("");
@@ -84,7 +88,7 @@ const ProductForm: React.FC = () => {
     (
       e: React.ChangeEvent<
         HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-      >
+      >,
     ) =>
       set(field, e.target.value);
 
@@ -99,7 +103,7 @@ const ProductForm: React.FC = () => {
   const handleRemoveTag = (tag: string) =>
     set(
       "tags",
-      formData.tags.filter((t) => t !== tag)
+      formData.tags.filter((t) => t !== tag),
     );
 
   const handlePhotosSelected = async (files: FileList) => {
@@ -121,7 +125,7 @@ const ProductForm: React.FC = () => {
   const updateVariantOption = (idx: number, val: string) =>
     set(
       "variants",
-      formData.variants.map((v, i) => (i === idx ? { ...v, option: val } : v))
+      formData.variants.map((v, i) => (i === idx ? { ...v, option: val } : v)),
     );
 
   const updateVariantValues = (idx: number, raw: string) =>
@@ -129,17 +133,23 @@ const ProductForm: React.FC = () => {
       "variants",
       formData.variants.map((v, i) =>
         i === idx
-          ? { ...v, values: raw.split(",").map((s) => s.trim()).filter(Boolean) }
-          : v
-      )
+          ? {
+              ...v,
+              values: raw
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean),
+            }
+          : v,
+      ),
     );
 
   const removeVariantValue = (vIdx: number, val: string) =>
     set(
       "variants",
       formData.variants.map((v, i) =>
-        i === vIdx ? { ...v, values: v.values.filter((x) => x !== val) } : v
-      )
+        i === vIdx ? { ...v, values: v.values.filter((x) => x !== val) } : v,
+      ),
     );
 
   const addVariant = () =>
@@ -149,18 +159,48 @@ const ProductForm: React.FC = () => {
   const handleSubmit = async () => {
     try {
       const data = new FormData();
+
       data.append("name", formData.productName);
       data.append("description", formData.description);
       data.append("category", formData.category);
-      data.append("price", String(Number(formData.price)));
+      data.append("price", String(formData.price));
       data.append("status", formData.status);
-      formData.tags.forEach((tag) => data.append("tags", tag));
+
+      data.append("sku", formData.sku);
+      data.append("barcode", formData.barcode);
+      data.append("quantity", String(formData.quantity));
+
+      data.append("discount", String(formData.discountPercentage || 0));
+      data.append("tax", String(formData.tax));
+
+      data.append("brand", formData.brand || "");
+
+      data.append("startDate", formData.startDate || "");
+
+      data.append("tags", JSON.stringify(formData.tags));
+      data.append("variants", JSON.stringify(formData.variants));
+
+      data.append(
+        "shipping",
+        JSON.stringify({
+          isDigital: formData.isDigital,
+          weight: formData.weight,
+          height: formData.height,
+          length: formData.length,
+        }),
+      );
+
       formData.photos.forEach((file) => data.append("photos", file));
-      if (formData.videos[0]) data.append("video", formData.videos[0]);
+
+      if (formData.videos[0]) {
+        data.append("video", formData.videos[0]);
+      }
+
       await createProduct(data).unwrap();
+
       toast.success("Product created successfully");
     } catch (err) {
-      console.error(err);
+      console.error("Create failed:", err);
       toast.error("Failed to create product");
     }
   };
@@ -175,6 +215,7 @@ const ProductForm: React.FC = () => {
       price: "",
       discountPercentage: "",
       tax: false,
+      brand: "",
       sku: "",
       barcode: "",
       quantity: "",
@@ -186,6 +227,7 @@ const ProductForm: React.FC = () => {
       weight: "",
       height: "",
       length: "",
+      startDate: "",
     });
 
   // ── Render ──
@@ -202,10 +244,8 @@ const ProductForm: React.FC = () => {
 
       <div className="max-w-5xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
-
           {/* ── LEFT COLUMN ── */}
           <div>
-
             {/* General Information */}
             <div className={sectionCls}>
               <h2 className="text-sm font-semibold text-gray-700 mb-4">
@@ -237,7 +277,9 @@ const ProductForm: React.FC = () => {
 
             {/* Media */}
             <div className={sectionCls}>
-              <h2 className="text-sm font-semibold text-gray-700 mb-4">Media</h2>
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">
+                Media
+              </h2>
 
               {/* Photo Upload */}
               <div className="mb-1">
@@ -250,17 +292,40 @@ const ProductForm: React.FC = () => {
               >
                 <div className="mb-3">
                   <svg width="48" height="40" viewBox="0 0 48 40" fill="none">
-                    <path d="M24 28V12M24 12L18 18M24 12L30 18" stroke="#d8a8d8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M8 32h32" stroke="#d8a8d8" strokeWidth="2" strokeLinecap="round"/>
-                    <rect x="1" y="6" width="46" height="32" rx="4" stroke="#e8d0e8" strokeWidth="1.5" fill="none"/>
+                    <path
+                      d="M24 28V12M24 12L18 18M24 12L30 18"
+                      stroke="#d8a8d8"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M8 32h32"
+                      stroke="#d8a8d8"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <rect
+                      x="1"
+                      y="6"
+                      width="46"
+                      height="32"
+                      rx="4"
+                      stroke="#e8d0e8"
+                      strokeWidth="1.5"
+                      fill="none"
+                    />
                   </svg>
                 </div>
                 <p className="text-sm text-gray-500 mb-1">
                   Drop your images here, or{" "}
-                  <span className="text-[#b87ab8] font-medium">click to browse</span>
+                  <span className="text-[#b87ab8] font-medium">
+                    click to browse
+                  </span>
                 </p>
                 <p className="text-xs text-gray-400">
-                  1000 × 1000 (4:3) recommended. PNG, JPG, and GIF files are allowed
+                  1000 × 1000 (4:3) recommended. PNG, JPG, and GIF files are
+                  allowed
                 </p>
                 <input
                   ref={photoInputRef}
@@ -268,7 +333,9 @@ const ProductForm: React.FC = () => {
                   accept="image/*"
                   multiple
                   className="hidden"
-                  onChange={(e) => e.target.files && handlePhotosSelected(e.target.files)}
+                  onChange={(e) =>
+                    e.target.files && handlePhotosSelected(e.target.files)
+                  }
                 />
               </div>
 
@@ -276,10 +343,22 @@ const ProductForm: React.FC = () => {
               {formData.photos.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">
                   {formData.photos.map((f, i) => (
-                    <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-[#e8d0e8]">
-                      <img src={URL.createObjectURL(f)} alt="" className="w-full h-full object-cover" />
+                    <div
+                      key={i}
+                      className="relative w-16 h-16 rounded-lg overflow-hidden border border-[#e8d0e8]"
+                    >
+                      <img
+                        src={URL.createObjectURL(f)}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
                       <button
-                        onClick={() => set("photos", formData.photos.filter((_, j) => j !== i))}
+                        onClick={() =>
+                          set(
+                            "photos",
+                            formData.photos.filter((_, j) => j !== i),
+                          )
+                        }
                         className="absolute top-0.5 right-0.5 bg-white rounded-full p-0.5"
                       >
                         <X className="w-3 h-3 text-gray-500" />
@@ -300,17 +379,40 @@ const ProductForm: React.FC = () => {
               >
                 <div className="mb-3">
                   <svg width="48" height="40" viewBox="0 0 48 40" fill="none">
-                    <path d="M24 28V12M24 12L18 18M24 12L30 18" stroke="#d8a8d8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M8 32h32" stroke="#d8a8d8" strokeWidth="2" strokeLinecap="round"/>
-                    <rect x="1" y="6" width="46" height="32" rx="4" stroke="#e8d0e8" strokeWidth="1.5" fill="none"/>
+                    <path
+                      d="M24 28V12M24 12L18 18M24 12L30 18"
+                      stroke="#d8a8d8"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M8 32h32"
+                      stroke="#d8a8d8"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <rect
+                      x="1"
+                      y="6"
+                      width="46"
+                      height="32"
+                      rx="4"
+                      stroke="#e8d0e8"
+                      strokeWidth="1.5"
+                      fill="none"
+                    />
                   </svg>
                 </div>
                 <p className="text-sm text-gray-500 mb-1">
                   Drop your images here, or{" "}
-                  <span className="text-[#b87ab8] font-medium">click to browse</span>
+                  <span className="text-[#b87ab8] font-medium">
+                    click to browse
+                  </span>
                 </p>
                 <p className="text-xs text-gray-400">
-                  1600 × 1200 (4:3) recommended. PNG, JPG, and GIF files are allowed
+                  1600 × 1200 (4:3) recommended. PNG, JPG, and GIF files are
+                  allowed
                 </p>
                 <input
                   ref={videoInputRef}
@@ -318,14 +420,28 @@ const ProductForm: React.FC = () => {
                   accept="video/*"
                   multiple
                   className="hidden"
-                  onChange={(e) => e.target.files && handleVideosSelected(e.target.files)}
+                  onChange={(e) =>
+                    e.target.files && handleVideosSelected(e.target.files)
+                  }
                 />
               </div>
+            </div>
+            <div className="mb-3">
+              <label className={labelCls}>Brand</label>
+              <input
+                type="text"
+                placeholder="Enter product brand..."
+                value={formData.brand}
+                onChange={handleInputChange("brand")}
+                className={inputCls}
+              />
             </div>
 
             {/* Pricing */}
             <div className={sectionCls}>
-              <h2 className="text-sm font-semibold text-gray-700 mb-4">Pricing</h2>
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">
+                Pricing
+              </h2>
 
               <div className="mb-3">
                 <label className={labelCls}>Product Price</label>
@@ -353,22 +469,34 @@ const ProductForm: React.FC = () => {
                 <div
                   onClick={() => set("tax", !formData.tax)}
                   className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                    formData.tax ? "bg-[#b87ab8] border-[#b87ab8]" : "bg-white border-[#d8c0d8]"
+                    formData.tax
+                      ? "bg-[#b87ab8] border-[#b87ab8]"
+                      : "bg-white border-[#d8c0d8]"
                   }`}
                 >
                   {formData.tax && (
                     <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path
+                        d="M1 4L3.5 6.5L9 1"
+                        stroke="white"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   )}
                 </div>
-                <span className="text-xs text-gray-500">Add tax for this product</span>
+                <span className="text-xs text-gray-500">
+                  Add tax for this product
+                </span>
               </label>
             </div>
 
             {/* Inventory */}
             <div className={sectionCls}>
-              <h2 className="text-sm font-semibold text-gray-700 mb-4">Inventory</h2>
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">
+                Inventory
+              </h2>
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className={labelCls}>SKU</label>
@@ -423,7 +551,9 @@ const ProductForm: React.FC = () => {
                     <div className="relative">
                       <select
                         value={variant.option}
-                        onChange={(e) => updateVariantOption(vIdx, e.target.value)}
+                        onChange={(e) =>
+                          updateVariantOption(vIdx, e.target.value)
+                        }
                         className={`${inputCls} appearance-none pr-8`}
                       >
                         <option value="">Select...</option>
@@ -431,7 +561,9 @@ const ProductForm: React.FC = () => {
                         <option value="Color">Color</option>
                         <option value="Material">Material</option>
                       </select>
-                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">▼</span>
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+                        ▼
+                      </span>
                     </div>
                   </div>
 
@@ -443,7 +575,10 @@ const ProductForm: React.FC = () => {
                         <span
                           key={val}
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-gray-600"
-                          style={{ background: "#f5eaf5", border: "1px solid #e8d0e8" }}
+                          style={{
+                            background: "#f5eaf5",
+                            border: "1px solid #e8d0e8",
+                          }}
                         >
                           {val}
                           <button
@@ -464,7 +599,10 @@ const ProductForm: React.FC = () => {
                         if (e.key === "Enter") {
                           updateVariantValues(
                             vIdx,
-                            [...variant.values, (e.target as HTMLInputElement).value].join(", ")
+                            [
+                              ...variant.values,
+                              (e.target as HTMLInputElement).value,
+                            ].join(", "),
                           );
                           (e.target as HTMLInputElement).value = "";
                         }
@@ -486,22 +624,34 @@ const ProductForm: React.FC = () => {
 
             {/* Shipping */}
             <div className={sectionCls}>
-              <h2 className="text-sm font-semibold text-gray-700 mb-4">Shiping</h2>
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">
+                Shiping
+              </h2>
 
               <label className="flex items-center gap-2 cursor-pointer select-none mb-4">
                 <div
                   onClick={() => set("isDigital", !formData.isDigital)}
                   className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                    formData.isDigital ? "bg-[#b87ab8] border-[#b87ab8]" : "bg-white border-[#d8c0d8]"
+                    formData.isDigital
+                      ? "bg-[#b87ab8] border-[#b87ab8]"
+                      : "bg-white border-[#d8c0d8]"
                   }`}
                 >
                   {formData.isDigital && (
                     <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path
+                        d="M1 4L3.5 6.5L9 1"
+                        stroke="white"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   )}
                 </div>
-                <span className="text-xs text-gray-500">This is a digital item</span>
+                <span className="text-xs text-gray-500">
+                  This is a digital item
+                </span>
               </label>
 
               <div className="grid grid-cols-3 gap-3">
@@ -541,10 +691,11 @@ const ProductForm: React.FC = () => {
 
           {/* ── RIGHT COLUMN ── */}
           <div>
-
             {/* Category */}
             <div className={sectionCls}>
-              <h2 className="text-sm font-semibold text-gray-700 mb-3">Category</h2>
+              <h2 className="text-sm font-semibold text-gray-700 mb-3">
+                Category
+              </h2>
 
               <div className="mb-3">
                 <label className={labelCls}>Product Category</label>
@@ -560,7 +711,9 @@ const ProductForm: React.FC = () => {
                     <option value="food">Food</option>
                     <option value="beauty">Beauty</option>
                   </select>
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">▼</span>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+                    ▼
+                  </span>
                 </div>
               </div>
 
@@ -573,7 +726,9 @@ const ProductForm: React.FC = () => {
                     <option value="sale">On Sale</option>
                     <option value="trending">Trending</option>
                   </select>
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">▼</span>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+                    ▼
+                  </span>
                 </div>
               </div>
             </div>
@@ -582,7 +737,10 @@ const ProductForm: React.FC = () => {
             <div className={sectionCls}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-semibold text-gray-700">Status</h2>
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "#ffd6cc", color: "#c0503a" }}>
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{ background: "#ffd6cc", color: "#c0503a" }}
+                >
                   Draft
                 </span>
               </div>
@@ -595,13 +753,14 @@ const ProductForm: React.FC = () => {
                     onChange={handleInputChange("status")}
                     className={`${inputCls} appearance-none pr-8`}
                   >
-                    
                     <option value="Draft">Draft</option>
                     <option value="Published">Published</option>
                     <option value="Low Stock">Low Stock</option>
                     <option value="Out of Stock">Out of Stock</option>
                   </select>
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">▼</span>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+                    ▼
+                  </span>
                 </div>
               </div>
             </div>
@@ -610,7 +769,9 @@ const ProductForm: React.FC = () => {
             <div className={sectionCls}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-semibold text-gray-700">Tags</h2>
-                <span className="text-xs text-[#b87ab8] font-medium cursor-pointer">Add Tag</span>
+                <span className="text-xs text-[#b87ab8] font-medium cursor-pointer">
+                  Add Tag
+                </span>
               </div>
 
               <div className="mb-3">
@@ -629,7 +790,10 @@ const ProductForm: React.FC = () => {
                   <span
                     key={i}
                     className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-gray-600"
-                    style={{ background: "#f5eaf5", border: "1px solid #e8d0e8" }}
+                    style={{
+                      background: "#f5eaf5",
+                      border: "1px solid #e8d0e8",
+                    }}
                   >
                     {tag}
                     <button
@@ -649,14 +813,14 @@ const ProductForm: React.FC = () => {
         <div className="flex justify-end gap-3 mt-2 pb-6">
           <button
             onClick={handleCancel}
-            className="px-6 py-2 rounded-lg text-sm font-medium text-gray-600 border border-[#e0d0e0] bg-white hover:bg-gray-50 transition-colors"
+            className="px-6 py-2 rounded-lg text-sm cursor-pointer font-medium text-gray-600 border border-[#e0d0e0] bg-white hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={isLoading}
-            className="px-6 py-2 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-70"
+            className="px-6 py-2 rounded-lg text-sm cursor-pointer font-medium text-white transition-colors disabled:opacity-70"
             style={{ background: "#b87ab8" }}
           >
             {isLoading ? "Saving..." : "Save"}
