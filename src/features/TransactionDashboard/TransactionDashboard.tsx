@@ -13,7 +13,7 @@ const TransactionDashboard: React.FC = () => {
   const itemsPerPage = 10; 
 
   const navigate = useNavigate();
-  const { data: transactions = [], isLoading, isError } = useGetAllOrdersQuery();
+  const { data: transactions = [], isLoading, isError } = useGetAllOrdersQuery({});
 
   // Helper for Payment Icons (kept your logic)
   const getPaymentIcon = (method?: string) => {

@@ -15,7 +15,7 @@ export interface IBank {
 }
 
 /* ================= WITHDRAW ================= */
-export type WithdrawStatus = "pending" | "approved" | "rejected";
+export type WithdrawStatus = "approved" | "pending" | "rejected";
 
 export interface IWithdraw {
   _id: string;
@@ -35,7 +35,6 @@ export interface ApiResponse<T> {
 }
 
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-
 
 export const bankApi = createApi({
   reducerPath: "financeApi",
@@ -84,8 +83,7 @@ export const bankApi = createApi({
     // ✅ Get Withdraw List
     getWithdraws: builder.query<IWithdraw[], void>({
       query: () => "/withdraw",
-      transformResponse: (res: ApiResponse<IWithdraw[]>) =>
-        res.data ?? [],
+      transformResponse: (res: ApiResponse<IWithdraw[]>) => res.data ?? [],
       providesTags: ["Withdraw"],
     }),
 

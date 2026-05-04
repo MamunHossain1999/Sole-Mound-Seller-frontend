@@ -39,6 +39,7 @@ export type OrderStatus =
   | "payment"
   | "processing"
   | "on_the_way"
+  | "pickup"
   | "completed"
   | "cancelled";
 
@@ -95,11 +96,8 @@ export const formatOrder = (order: IOrder) => {
 
     status: order.status,
     paymentStatus: order.paymentStatus,
-    comment: (order as any).comment ?? "",
     paymentMethod: order.paymentMethod ?? "unknown",
-
     shippingMethod: order.shippingMethod ?? "standard",
-
     transactionId: order.transactionId ?? "N/A",
 
     date: order.createdAt
@@ -107,15 +105,18 @@ export const formatOrder = (order: IOrder) => {
       : "N/A",
 
     /* =========================
-       PRODUCTS (SKU FIXED)
+       PRODUCTS (SIMPLE + CORRECT)
     ========================= */
-    products: (order.products ?? []).map((p) => ({
+    products: (order.products ?? []).map((p: any) => ({
       productId: p.productId,
+
       name: p.name ?? "N/A",
       image: p.image ?? "",
-      price: p.price,
+      price: p.price ?? 0,
       quantity: p.quantity,
       sku: p.sku ?? "N/A",
+
+      total: (p.price ?? 0) * p.quantity,
     })),
 
     total: order.totalAmount ?? 0,

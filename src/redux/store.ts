@@ -1,4 +1,3 @@
-
 import { configureStore } from "@reduxjs/toolkit";
 import { authApi } from "./api/authApi";
 import { userApi } from "./api/userApi";
@@ -10,6 +9,8 @@ import { orderApi } from "./api/orderApi";
 import { categoryApi } from "./api/categoryApi";
 import { bankApi } from "./api/bankApi";
 import { storeApi } from "./api/storeApi";
+import { statsApi } from "./api/statsApi";
+import { topCategoryApi } from "./api/topCategoryApi";
 
 export const store = configureStore({
   reducer: {
@@ -22,8 +23,9 @@ export const store = configureStore({
     [orderApi.reducerPath]: orderApi.reducer,
     [categoryApi.reducerPath]: categoryApi.reducer,
     [bankApi.reducerPath]: bankApi.reducer,
-    [storeApi.reducerPath]:storeApi.reducer,
-
+    [storeApi.reducerPath]: storeApi.reducer,
+    [statsApi.reducerPath]: statsApi.reducer,
+    [topCategoryApi.reducerPath]: topCategoryApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -37,6 +39,8 @@ export const store = configureStore({
       categoryApi.middleware,
       bankApi.middleware,
       storeApi.middleware,
+      statsApi.middleware,
+      topCategoryApi.middleware,
     ),
 });
 

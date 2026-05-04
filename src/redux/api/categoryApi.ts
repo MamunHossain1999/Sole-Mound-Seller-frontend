@@ -97,8 +97,7 @@ export const categoryApi = createApi({
 /* ================= EXPORT HOOKS ================= */
 
 export const {
-  useGetBestSellersQuery,
-  useGetTopCategoriesQuery,
+ 
   useGetAllCategoriesQuery,
   useGetSingleCategoryQuery,
   useUpdateCategoryStatusMutation,

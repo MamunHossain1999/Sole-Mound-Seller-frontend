@@ -13,7 +13,7 @@ import {
 import { toast } from "react-toastify";
 
 const OrderListPage: React.FC = () => {
-  const { data: orders = [], isLoading, isError } = useGetAllOrdersQuery();
+  const { data: orders = [], isLoading, isError } = useGetAllOrdersQuery({});
   const [deleteOrder] = useDeleteOrderMutation();
 
   // ✅ সব state আগে declare করতে হবে
