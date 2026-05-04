@@ -63,6 +63,7 @@ export interface IOrder {
   paymentStatus: PaymentStatus;
 
   paymentMethod?: PaymentMethod;
+  comment?:string;
 
   transactionId?: string | null;
 
@@ -97,6 +98,8 @@ export const formatOrder = (order: IOrder) => {
     status: order.status,
     paymentStatus: order.paymentStatus,
     paymentMethod: order.paymentMethod ?? "unknown",
+    comment: order.comment ?? "",
+
     shippingMethod: order.shippingMethod ?? "standard",
     transactionId: order.transactionId ?? "N/A",
 
@@ -105,18 +108,29 @@ export const formatOrder = (order: IOrder) => {
       : "N/A",
 
     /* =========================
-       PRODUCTS (SIMPLE + CORRECT)
+       PRODUCTS (SAFE + POPULATE SUPPORT)
     ========================= */
     products: (order.products ?? []).map((p: any) => ({
-      productId: p.productId,
+      productId:
+        typeof p.productId === "object" ? p.productId._id : p.productId,
 
-      name: p.name ?? "N/A",
-      image: p.image ?? "",
-      price: p.price ?? 0,
+      name:
+        typeof p.productId === "object" ? p.productId.name : p.name || "N/A",
+
+      image:
+        typeof p.productId === "object"
+          ? p.productId.images?.[0]
+          : p.image || "",
+
+      price: typeof p.productId === "object" ? p.productId.price : p.price || 0,
+
       quantity: p.quantity,
-      sku: p.sku ?? "N/A",
 
-      total: (p.price ?? 0) * p.quantity,
+      sku: typeof p.productId === "object" ? p.productId.sku : p.sku || "N/A",
+
+      total:
+        (typeof p.productId === "object" ? p.productId.price : p.price || 0) *
+        p.quantity,
     })),
 
     total: order.totalAmount ?? 0,

@@ -10,18 +10,26 @@ import { toast } from "react-toastify";
 
 interface Transaction {
   id: string;
-  total: string | number; // API response অনুযায়ী string বা number হতে পারে
+
+  total: string | number; // API থেকে string/number দুইটাই আসতে পারে
+
   paymentMethod: string;
+
   status:
-    | "completed"
     | "pending"
-    | "processing"
-    | "cancelled"
     | "payment"
-    | "on_the_way";
-  paymentStatus: "paid" | "unpaid";
+    | "processing"
+    | "on_the_way"
+    | "pickup" // ✅ ADDED
+    | "completed"
+    | "cancelled";
+
+  paymentStatus: "paid" | "unpaid" | "failed"; // (optional improvement)
+
   date: string;
+
   comment?: string;
+
   summary?: {
     total: number;
   };
@@ -120,16 +128,25 @@ const EarningsDashboard: React.FC = () => {
     switch (status) {
       case "completed":
         return "bg-emerald-100 text-emerald-700";
+
       case "payment":
         return "bg-indigo-100 text-indigo-700";
+
       case "pending":
         return "bg-amber-100 text-amber-700";
+
       case "on_the_way":
         return "bg-sky-100 text-sky-700";
+
       case "processing":
         return "bg-purple-100 text-purple-700";
+
+      case "pickup":
+        return "bg-blue-100 text-blue-700";
+
       case "cancelled":
         return "bg-rose-100 text-rose-700";
+
       default:
         return "bg-gray-100 text-gray-700";
     }
