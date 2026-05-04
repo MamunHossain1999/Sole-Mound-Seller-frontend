@@ -25,7 +25,7 @@ const CustomarManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const { data: customers = [], isLoading, isError } = useGetAllUsersQuery();
-  const { data: orders = [] } = useGetAllOrdersQuery();
+  const { data: orders = [] } = useGetAllOrdersQuery({});
   const [deleteUser] = useDeleteUserMutation();
 
   console.log(orders);
