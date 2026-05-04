@@ -1,116 +1,63 @@
-const topProducts = [
-  {
-    name: "Apple iPhone 13",
-    orders: 506,
-    status: "Stock",
-    price: "$999.29",
-  },
-  {
-    name: "Nike Air Jordan",
-    orders: 506,
-    status: "Stock",
-    price: "$72.40",
-  },
-  {
-    name: "Beats Studio 2",
-    orders: 506,
-    status: "Stock",
-    price: "$99.90",
-  },
-  {
-    name: "Apple Watch Series 7",
-    orders: 506,
-    status: "Out",
-    price: "$249.99",
-  },
-  {
-    name: "Amazon Echo Dot",
-    orders: 506,
-    status: "Stock",
-    price: "$79.40",
-  },
-];
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-const topBrands = [
-  {
-    name: "Levis",
-    orders: 506,
-    logo: "https://i.ibb.co/sJygm0r0/1ebaf291c1cd3e69e2465cd2981b4f0303f635a9.png",
-  },
-  {
-    name: "Nike Air Jordan",
-    orders: 456,
-    logo: "https://i.ibb.co/60DG5wwQ/7e4b970e1a3efc2de9066282910c715943948b02.png",
-  },
-  {
-    name: "Vans",
-    orders: 405,
-    logo: "https://i.ibb.co/79nJY97/5edea6c599a489ac7df41a0f286d434cca666edb.png",
-  },
-  {
-    name: "Apple Watch Series 7",
-    orders: 398,
-    logo: "https://i.ibb.co/fJYTsb7/54727d2f25e44d1495bf730f9b234ced5348d619.png",
-  },
-  {
-    name: "Amazon Echo Dot",
-    orders: 346,
-    logo: "https://i.ibb.co/pv1YK8zW/e1132c18dbf95e14f3fec7e6f4de509917755d57.png",
-  },
-];
+import { useGetAllCategoriesQuery } from "@/redux/api/categoryApi";
+import { useGetTopCategoriesQuery } from "@/redux/api/topCategoryApi";
 
 const TopSellingAndBrands = () => {
+  const { data: categories = [], isLoading } = useGetTopCategoriesQuery();
+  const { data: brands = [] } = useGetAllCategoriesQuery();
+
+  // top brands sort by total orders
+  const sortedBrands = [...brands].sort(
+    (a: any, b: any) => (b.sales || b.total || 0) - (a.sales || a.total || 0),
+  );
+
+  const top5Brands = sortedBrands.slice(0, 5);
+
+  if (isLoading) {
+    return <p className="text-center py-10">Loading...</p>;
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-      {/* Top Selling Products - 3 columns */}
+      {/* ================= TOP SELLING ================= */}
       <div className="lg:col-span-3 bg-[#FDF1F7] rounded-xl shadow-sm">
         <h2 className="text-lg font-bold text-[#1F1F1F] bg-white px-4 py-5 rounded-t-xl">
           Top Selling Products
         </h2>
+
         <div className="overflow-x-auto">
           <table className="w-full min-w-[600px]">
-            <thead className="bg-[#FDF1F7]">
+            <thead>
               <tr>
-                <th className="text-left px-4 py-3 text-[#A8537B] font-bold text-base lg:text-[20px]">
-                  Products
-                </th>
-                <th className="text-left px-4 py-3 text-[#8B909A] font-bold text-base lg:text-[20px]">
-                  Total Order
-                </th>
-                <th className="text-left px-4 py-3 text-[#8B909A] font-bold text-base lg:text-[20px]">
-                  Status
-                </th>
-                <th className="text-left px-4 py-3 text-[#8B909A] font-bold text-base lg:text-[20px]">
-                  Price
-                </th>
+                <th className="text-left px-4 py-3">Category</th>
+                <th className="text-left px-4 py-3">Total Order</th>
+                <th className="text-left px-4 py-3">Status</th>
+                <th className="text-left px-4 py-3">Price</th>
               </tr>
             </thead>
+
             <tbody>
-              {topProducts.map((product, index) => (
-                <tr key={index} className="bg-white hover:bg-gray-50">
-                  <td className="px-4 py-3 text-[#1F1F1F] font-medium">
-                    {product.name}
+              {categories.map((item: any, index: number) => (
+                <tr key={index} className="bg-white">
+                  <td className="px-4 py-3 flex items-center gap-3">
+                    <img src={item.image?.[0]} className="w-8 h-8 rounded" />
+                    <span>{item._id}</span>
                   </td>
-                  <td className="px-4 py-3 text-[#23272E]">{product.orders}</td>
+
+                  <td className="px-4 py-3">{item.total}</td>
+
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex items-center gap-2 text-sm font-medium ${
-                        product.status === "Stock"
-                          ? "text-[#22C55E]"
-                          : "text-[#FF1C1C]"
-                      }`}
+                      className={
+                        item.total > 2 ? "text-green-500" : "text-red-500"
+                      }
                     >
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          product.status === "Stock"
-                            ? "bg-[#22C55E]"
-                            : "bg-[#FF1C1C]"
-                        }`}
-                      ></span>
-                      {product.status}
+                      {item.total > 2 ? "Stock" : "Low"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-[#23272E]">{product.price}</td>
+
+                  <td className="px-4 py-3">${item.totalPrice || 0}</td>
                 </tr>
               ))}
             </tbody>
@@ -118,41 +65,30 @@ const TopSellingAndBrands = () => {
         </div>
       </div>
 
-      {/* Top Brands - 2 columns */}
+      {/* ================= TOP BRANDS ================= */}
       <div className="lg:col-span-2 bg-[#FDF1F7] rounded-xl shadow-sm">
-        <h2 className="text-lg font-bold text-[#1F1F1F] bg-white px-4 py-5 rounded-t-xl">
+        <h2 className="text-lg font-bold bg-white px-4 py-5 rounded-t-xl">
           Top Brands
         </h2>
+
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-[#FDF1F7]">
+            <thead>
               <tr>
-                <th className="text-left px-4 py-3 text-[#A8537B] font-bold text-base lg:text-[20px]">
-                  Brands
-                </th>
-                <th className="text-left pl-4 py-3 text-[#8B909A] font-bold text-base lg:text-[20px]">
-                  Order
-                </th>
+                <th className="text-left px-4 py-3">Brand</th>
+                <th className="text-left px-4 py-3">Orders</th>
               </tr>
             </thead>
+
             <tbody>
-              {topBrands.map((brand, index) => (
+              {top5Brands?.map((item: any, index: number) => (
                 <tr key={index} className="bg-white">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-4">
-                      <img
-                        src={brand.logo}
-                        alt={brand.name}
-                        className="w-6 h-6 object-cover"
-                      />
-                      <span className="text-base font-normal text-[#1F1F1F]">
-                        {brand.name}
-                      </span>
-                    </div>
+                  <td className="px-4 py-3 flex items-center gap-3">
+                    <img src={item.image} className="w-6 h-6 rounded" />
+                    <span>{item.name || item._id}</span>
                   </td>
-                  <td className="px-4 py-3 text-base font-normal text-[#23272E]">
-                    {brand.orders}
-                  </td>
+
+                  <td className="px-4 py-3">{item.sales || item.total || 0}</td>
                 </tr>
               ))}
             </tbody>
