@@ -28,7 +28,7 @@ const CustomarManagement: React.FC = () => {
   const { data: orders = [] } = useGetAllOrdersQuery({});
   const [deleteUser] = useDeleteUserMutation();
 
-  console.log(orders);
+
   // total buy
   const getTotalBuy = (userId: string) => {
     if (!orders) return 0;

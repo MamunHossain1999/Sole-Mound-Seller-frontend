@@ -456,32 +456,34 @@ const OrderListPage: React.FC = () => {
                         )}
                       </div>
                       <div className="grid grid-cols-2 gap-2 mb-4">
-                        {dateOptions.map((option) => (
-                          <div
-                            key={option}
-                            className="flex items-center p-1 rounded text-[#83898C] cursor-pointer"
-                            onClick={() => handleFilterClick(option)}
-                          >
-                            <div className="relative flex items-center justify-center w-5 h-5">
-                              <input
-                                checked={isAllSelected}
-                                ref={(el) => {
-                                  if (el) el.indeterminate = isIndeterminate;
-                                }}
-                                onChange={(e) =>
-                                  handleSelectAll(e.target.checked)
-                                }
-                                className="peer w-full h-full accent-[#C8A8E9] bg-white border border-[#C8A8E9] rounded appearance-none checked:bg-[#C8A8E9] checked:border-transparent"
-                              />
-                              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-white text-xs font-bold peer-checked:flex">
-                                ✓
-                              </span>
+                        {dateOptions.map((option) => {
+                          const isSelected = selectedFilter === option;
+
+                          return (
+                            <div
+                              key={option}
+                              className="flex items-center p-1 rounded text-[#83898C] cursor-pointer"
+                              onClick={() => handleFilterClick(option)}
+                            >
+                              <div className="relative flex items-center justify-center w-5 h-5">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  readOnly
+                                  className="peer w-full h-full accent-[#C8A8E9] bg-white border border-gray-300 rounded appearance-none checked:bg-[#C8A8E9] checked:border-transparent"
+                                />
+
+                                <span className="pointer-events-none absolute inset-0 hidden items-center justify-center text-white text-xs font-bold peer-checked:flex">
+                                  ✓
+                                </span>
+                              </div>
+
+                              <label className="ml-2 text-sm text-gray-700 cursor-pointer">
+                                {option}
+                              </label>
                             </div>
-                            <label className="ml-2 text-sm text-gray-700 cursor-pointer">
-                              {option}
-                            </label>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       {showCalendar && (
